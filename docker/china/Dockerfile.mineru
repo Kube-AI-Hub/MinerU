@@ -1,0 +1,59 @@
+# MinerU serving engine for the model platform.
+#
+# The platform downloads the model with its KServe storage initializer and
+# mounts it at /mnt/models/model, so this image deliberately does NOT bake the
+# VLM weights: only the small model bundle (layout, OCR, formula, table) ships
+# inside, because that one is a fixed asset of the engine rather than something
+# a user picks per deployment.
+#
+# Built from the repository root:
+#   docker build -f docker/china/Dockerfile.mineru -t mineru:4.0.12-cu129 .
+#
+# The vLLM base image is reused so the VLM weights can be served by the
+# inference engine MinerU already drives locally, and so torch arrives
+# CUDA-matched instead of being reinstalled from PyPI.
+
+ARG VLLM_IMAGE=docker.m.daocloud.io/vllm/vllm-openai:v0.21.0-cu129
+FROM ${VLLM_IMAGE}
+
+# libgl and libglib are needed by opencv, which MinerU uses for image handling.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libgl1 \
+        libglib2.0-0 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Installed from this source tree rather than from PyPI: `mineru-kit serve` and
+# its playground live in this repository, so the image has to carry the same
+# code that is being deployed. Torch is already in the base image and satisfies
+# the [torch] extra, so pip leaves the CUDA-matched build alone.
+WORKDIR /opt/mineru
+COPY pyproject.toml README.md README_zh-CN.md ./
+COPY mineru ./mineru
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
+        -i https://mirrors.aliyun.com/pypi/simple \
+        '.[torch]' && \
+    python3 -m pip cache purge
+
+# Bake the small model bundle only. Naming the repo explicitly keeps the VLM
+# weights out: `--tier standard` would also download MinerU2.5-Pro-2605-1.2B,
+# which the platform mounts at runtime instead.
+RUN MINERU_MODEL_SMALL_BACKEND=torch \
+    mineru-kit models download MinerU-4_models_torch -s modelscope
+
+# Local source means MinerU validates what is on disk rather than reaching for
+# the Hub; `mineru-kit serve` points it at the platform mount through the bridge.
+ENV MINERU_MODEL_SOURCE=local \
+    MINERU_MODEL_SMALL_BACKEND=torch \
+    MINERU_MODEL_VLM_ENGINE=vllm \
+    MINERU_MODEL_DIR=/mnt/models/model \
+    PYTHONUNBUFFERED=1
+
+# The platform probes GET /health on this port and proxies everything else to it.
+EXPOSE 8000
+
+# One port serves the parse API, its OpenAPI docs and the playground. Missing
+# weights fail at startup with a clear message rather than downloading in the
+# pod, which is `mineru-kit serve`'s default; pass --allow-download to opt out.
+ENTRYPOINT ["mineru-kit", "serve", "--host", "0.0.0.0", "--port", "8000", "--tier", "standard"]
