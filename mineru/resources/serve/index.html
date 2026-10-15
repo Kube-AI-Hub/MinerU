@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MinerU · 文档解析</title>
+    <link rel="stylesheet" href="./index.css" />
+    <script src="./i18n.js"></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="layout">
+      <header class="header">
+        <h1 data-i18n="title">MinerU 文档解析</h1>
+        <p data-i18n="subtitle">
+          把 PDF、Office 文档与图片转成带格式的 Markdown，并在浏览器里直接预览结果。
+        </p>
+      </header>
+
+      <div class="card">
+        <div class="tabs">
+          <button class="tab active" data-target="test" data-i18n="tabTest">解析</button>
+          <button class="tab" data-target="api" data-i18n="tabApi">API</button>
+          <div class="tabs-right">
+            <label class="token-control">
+              <input type="checkbox" id="use-token" />
+              <span data-i18n="useToken">使用我的访问令牌</span>
+            </label>
+          </div>
+        </div>
+
+        <section class="section active" id="section-test">
+          <div class="grid">
+            <div class="pane">
+              <label class="field">
+                <span data-i18n="file">文档</span>
+                <input type="file" id="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tif,.tiff" />
+              </label>
+
+              <div class="demos" id="demos" hidden>
+                <span class="demos-label" data-i18n="demoLabel">或直接用内置示例：</span>
+                <div class="demos-list" id="demos-list"></div>
+              </div>
+
+              <div class="row">
+                <label class="field">
+                  <span data-i18n="tier">解析档位</span>
+                  <select id="tier">
+                    <option value="flash" data-i18n="tierFlash">flash · 快速预览</option>
+                    <option value="basic" data-i18n="tierBasic">basic · 基础 OCR</option>
+                    <option value="standard" selected data-i18n="tierStandard">standard · 复杂版面</option>
+                    <option value="advanced" data-i18n="tierAdvanced">advanced · 更高质量</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span data-i18n="ocrMode">OCR 模式</span>
+                  <select id="ocr-mode">
+                    <option value="auto" selected>auto</option>
+                    <option value="txt">txt</option>
+                    <option value="ocr">ocr</option>
+                  </select>
+                </label>
+              </div>
+
+              <label class="field">
+                <span data-i18n="pageRange">页码范围</span>
+                <input type="text" id="page-range" placeholder="all" />
+                <span class="muted" data-i18n="pageRangeHint">留空或 all 表示全部页面。</span>
+              </label>
+
+              <button class="primary" id="submit" data-i18n="parse">开始解析</button>
+              <p class="status" id="status"></p>
+            </div>
+
+            <div class="pane result-pane">
+              <div class="result-head">
+                <span data-i18n="result">解析结果</span>
+                <div class="result-actions">
+                  <button class="ghost" id="copy" data-i18n="copy" disabled>复制</button>
+                  <button class="ghost" id="download" data-i18n="download" disabled>下载 Markdown</button>
+                </div>
+              </div>
+              <div class="result" id="result">
+                <p class="muted" data-i18n="resultEmpty">解析完成后，Markdown 会显示在这里。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="section-api">
+          <div id="swagger" class="swagger"></div>
+        </section>
+      </div>
+
+      <footer class="footer">
+        <span id="version"></span>
+      </footer>
+    </div>
+  </body>
+</html>

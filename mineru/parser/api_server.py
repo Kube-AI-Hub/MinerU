@@ -23,6 +23,7 @@ from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from collections.abc import Iterable
 from typing import Annotated, Any, AsyncIterator, Awaitable, Callable, Literal, NoReturn, TypedDict
 from urllib.parse import urlparse
 
@@ -2565,6 +2566,7 @@ def create_app(
     preload_models: bool = False,
     vlm_config: VlmConfig | None = None,
     retention_seconds: int | None = None,
+    public_paths: Iterable[str] = (),
 ) -> FastAPI:
     """Create a FastAPI application implementing the MinerU v1 REST API.
 
@@ -2601,6 +2603,10 @@ def create_app(
         Initialize the VLM client and local Hybrid models at startup. Ignored for Flash.
     vlm_config:
         Complete VLM connection configuration override; defaults to global model.vlm settings.
+    public_paths:
+        Extra routes reachable without an API key, on top of the built-in public
+        paths. A serving platform's probe cannot send an Authorization header,
+        so an added health route belongs here.
     """
     retention_seconds = resolve_retention_seconds(retention_seconds)
     upload_dir = upload_dir or ""
@@ -2719,26 +2725,36 @@ def create_app(
 
         @application.get("/docs", include_in_schema=False)
         async def _offline_swagger(request: Request) -> Response:
-            """使用安装包内资源，并为反向代理补全 OAuth 回调的路径前缀。"""
+            """使用安装包内资源，并为反向代理补全 OAuth 回调的路径前缀。
+
+            资源与 openapi 走相对地址：反代若只剥掉自己的前缀而不下发
+            root_path（平台 rproxy 即如此），绝对地址会指向反代自身的域，
+            相对地址在直连与反代两种情形下都能落到本服务。
+            """
             root = request.scope.get("root_path", "").rstrip("/")
+            prefix = f"{root}/docs" if root else "./docs"
             return get_swagger_ui_html(
-                openapi_url=f"{root}/openapi.json",
+                openapi_url=f"{root}/openapi.json" if root else "./openapi.json",
                 title="MinerU API - Swagger UI",
-                swagger_js_url=f"{root}/docs/assets/vendor/swagger-ui-bundle.js",
-                swagger_css_url=f"{root}/docs/assets/vendor/swagger-ui.css",
-                swagger_favicon_url=f"{root}/docs/assets/vendor/favicon.png",
-                oauth2_redirect_url=f"{root}/docs/oauth2-redirect",
+                swagger_js_url=f"{prefix}/assets/vendor/swagger-ui-bundle.js",
+                swagger_css_url=f"{prefix}/assets/vendor/swagger-ui.css",
+                swagger_favicon_url=f"{prefix}/assets/vendor/favicon.png",
+                oauth2_redirect_url=f"{prefix}/oauth2-redirect",
             )
 
         @application.get("/redoc", include_in_schema=False)
         async def _offline_redoc(request: Request) -> Response:
-            """ReDoc 使用本地脚本、图标和字体，不请求远程品牌素材。"""
+            """ReDoc 使用本地脚本、图标和字体，不请求远程品牌素材。
+
+            与 Swagger 同理走相对地址，兼容不下发 root_path 的反向代理。
+            """
             root = request.scope.get("root_path", "").rstrip("/")
+            prefix = f"{root}/docs" if root else "./docs"
             return get_redoc_html(
-                openapi_url=f"{root}/openapi.json",
+                openapi_url=f"{root}/openapi.json" if root else "./openapi.json",
                 title="MinerU API - ReDoc",
-                redoc_js_url=f"{root}/docs/assets/redoc.standalone.js",
-                redoc_favicon_url=f"{root}/docs/assets/vendor/favicon.png",
+                redoc_js_url=f"{prefix}/assets/redoc.standalone.js",
+                redoc_favicon_url=f"{prefix}/assets/vendor/favicon.png",
                 with_google_fonts=False,
             )
 
@@ -2812,8 +2828,8 @@ def create_app(
             ),
         )
 
-    _PUBLIC_PATHS = frozenset({"/v1/health", "/v1/models", "/v1/tiers"})
-    _PUBLIC_PREFIXES = ("/openapi", "/docs", "/redoc")
+    _PUBLIC_PATHS = frozenset({"/v1/health", "/v1/models", "/v1/tiers", *public_paths})
+    _PUBLIC_PREFIXES = ("/openapi", "/docs", "/redoc", *tuple(f"{p}/" for p in public_paths))
 
     async def _auth_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         path = request.url.path

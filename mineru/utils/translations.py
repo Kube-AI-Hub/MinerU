@@ -432,6 +432,21 @@ ZH_MESSAGES: dict[str, str] = {
         "将文件或目录解析为 markdown、middle JSON 或 zip 输出。"
     ),
     "Start the Gradio document parsing web UI backed by the MinerU V1 API.": "启动基于 MinerU V1 API 的 Gradio 文档解析界面。",
+    "Serve the parse API, its OpenAPI docs and the playground on one port.": (
+        "在单个端口上同时提供解析 API、OpenAPI 文档与 Playground 页面。"
+    ),
+    "Directory holding preloaded VLM weights; empty selects the platform mount point": (
+        "存放已预置 VLM 权重的目录;留空则使用平台挂载点。"
+    ),
+    "Fail fast when no preloaded weights are found. Default suits a hosted deployment, "
+    "where a missing mount should not silently download at startup; pass --allow-download "
+    "to fall back to MinerU's own model resolution.": (
+        "未找到预置权重时直接报错退出。默认值适用于托管部署:挂载缺失时不应在启动阶段静默下载;"
+        "传入 --allow-download 可回退到 MinerU 自身的模型解析流程。"
+    ),
+    "Playground assets are missing from the installation: {path}": (
+        "安装包中缺少 Playground 静态资源:{path}"
+    ),
     "Start the self-hosted MinerU parsing API service.": ("启动自托管的 MinerU 解析 API 服务。"),
     "Start the local VLM server with OpenAI-compatible chat completions.": (
         "启动本地 VLM 服务,提供 OpenAI 兼容的 chat completions。"
@@ -501,6 +516,9 @@ ZH_MESSAGES: dict[str, str] = {
     "Remote VLM model name; empty value enables discovery": "远程 VLM 模型名;留空启用自动发现",
     "VLM HTTP timeout in seconds (default: 600)": "VLM HTTP 超时秒数(默认 600)",
     "VLM inference concurrency (default: 100)": "VLM 推理并发数(默认 100)",
+    "API service log level: critical, error, warning, info, debug, trace; default: global log.level": (
+        "API 服务日志级别: critical、error、warning、info、debug、trace;默认取全局 log.level。"
+    ),
     "API service log level: critical, error, warning, info, debug, trace; default: global log.level. "
     "Server-scope only (Uvicorn startup, HTTP access, ASGI, and service logs); "
     "the Loguru default sink always follows global log.level": (

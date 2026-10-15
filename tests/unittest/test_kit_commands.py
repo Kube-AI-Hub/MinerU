@@ -399,6 +399,7 @@ def test_kit_root_commands_keep_product_order() -> None:
     assert command.list_commands(None) == [
         "parse",
         "webui",
+        "serve",
         "api-server",
         "vlm-server",
         "router",
