@@ -23,6 +23,7 @@ would escape the proxy and hit the platform's own host instead.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
@@ -57,6 +58,61 @@ _weights_dir = weights_dir
 def demo_documents() -> list[str]:
     """Return the bundled demo documents that are actually present."""
     return [name for name in DEMO_FILES if (ASSETS_DIR / "demo" / name).is_file()]
+
+
+#: Matches the wrapper the HTML renderer puts around each parsed block. Reading
+#: the keys back out of the rendered markup is what lets the page know which
+#: blocks survived rendering, instead of guessing and highlighting dead regions.
+_RENDERED_BLOCK_RE = re.compile(
+    r'<div class="docvortex-block"[^>]*data-page-idx="(\d+)"[^>]*data-block-type="([^"]+)"'
+    r'[^>]*data-block-index="(\d+)"'
+)
+
+
+def _block_geometry(middle_json: object) -> list[dict]:
+    """Collect every block's page, type, index and normalized bbox.
+
+    The bboxes in the parse result are normalized to the page, which is what
+    lets the viewer place a rectangle without knowing the render scale.
+    """
+    pages = getattr(middle_json, "pages", None)
+    if pages is None and isinstance(middle_json, dict):
+        pages = middle_json.get("pages")
+    blocks: list[dict] = []
+    for page in pages or []:
+        page_idx = getattr(page, "page_idx", None)
+        page_blocks = getattr(page, "blocks", None)
+        if page_idx is None or page_blocks is None:
+            page_idx = page["page_idx"] if isinstance(page, dict) else page_idx
+            page_blocks = page.get("blocks") if isinstance(page, dict) else page_blocks
+        for block in page_blocks or []:
+            index = getattr(block, "index", None)
+            bbox = getattr(block, "bbox", None)
+            if index is None or bbox is None:
+                index = block["index"] if isinstance(block, dict) else index
+                bbox = block.get("bbox") if isinstance(block, dict) else bbox
+            block_type = getattr(block, "type", None)
+            if block_type is None and isinstance(block, dict):
+                block_type = block.get("type")
+            if page_idx is None or index is None or not bbox or len(bbox) != 4:
+                continue
+            blocks.append(
+                {
+                    "page": int(page_idx),
+                    "index": int(index),
+                    "type": str(block_type or ""),
+                    "bbox": [float(value) for value in bbox],
+                }
+            )
+    return blocks
+
+
+def _rendered_block_keys(html: str) -> list[str]:
+    """Return the ``page:index`` keys the renderer actually emitted."""
+    return [
+        f"{int(page)}:{int(index)}"
+        for page, _block_type, index in _RENDERED_BLOCK_RE.findall(html)
+    ]
 
 
 def create_serving_app(
@@ -150,6 +206,11 @@ def create_serving_app(
         tables, formulas and image placement then look the same in both, and
         the page carries no second Markdown implementation to keep in sync.
 
+        Alongside the HTML it returns the page/block geometry the source
+        viewer needs. Sending both keeps the comparison honest: the rectangles
+        and the highlighted elements come from one parse result, and the
+        rendered block keys let the page mark the blocks the renderer kept.
+
         Body: ``{"middle_json": <the parse result's middle_json>}``.
         """
         try:
@@ -185,7 +246,13 @@ def create_serving_app(
             logger.warning("Preview rendering failed: %s", exc)
             return JSONResponse({"error": str(exc)}, status_code=422)
 
-        return JSONResponse({"html": html})
+        return JSONResponse(
+            {
+                "html": html,
+                "blocks": _block_geometry(result.middle_json),
+                "rendered_blocks": _rendered_block_keys(html),
+            }
+        )
 
     @application.get("/", include_in_schema=False)
     async def playground() -> FileResponse:
@@ -214,7 +281,7 @@ def create_serving_app(
         path = request.url.path
         if path in ("/", CONFIG_PATH) or path.startswith("/demo/"):
             response.headers["Cache-Control"] = "no-cache"
-        elif path.endswith((".html", ".css", ".js")):
+        elif path.endswith((".html", ".css", ".js", ".mjs")):
             response.headers.setdefault("Cache-Control", "no-cache")
         return response
 

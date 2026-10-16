@@ -6,7 +6,7 @@
     <title>MinerU · 文档解析</title>
     <link rel="stylesheet" href="./index.css" />
     <script src="./i18n.js"></script>
-    <script src="./app.js" defer></script>
+    <script type="module" src="./app.mjs"></script>
   </head>
   <body>
     <div class="layout">
@@ -84,6 +84,9 @@
               <div class="source-body" id="source-body">
                 <p class="muted placeholder" data-i18n="sourceEmpty">选择文件后，这里显示源文档。</p>
               </div>
+              <p class="muted hint-line" data-i18n="sourceHint">
+                移动鼠标到任一侧的标题、表格或段落，另一侧会同时高亮；点击可固定选中。
+              </p>
             </div>
 
             <!-- 右：解析结果 -->

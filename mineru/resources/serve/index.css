@@ -432,16 +432,146 @@ button.ghost:disabled {
   margin: auto;
 }
 
-.source-frame,
+/* Source viewer: the pdf.js canvas plus one overlay layer per page. */
+.source-viewer {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.source-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-100);
+}
+
+.source-name {
+  overflow: hidden;
+  color: var(--gray-700);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-spacer {
+  flex: 1;
+}
+
+.source-btn {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-700);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.source-btn:hover {
+  border-color: var(--brand-600);
+  color: var(--brand-600);
+}
+
+.source-scale {
+  min-width: 40px;
+  color: var(--gray-500);
+  font-size: 12px;
+  text-align: center;
+}
+
+.source-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+
+.source-status {
+  margin: auto;
+  color: var(--gray-500);
+  font-size: 13px;
+}
+
+.source-page {
+  position: relative;
+  margin: 0 auto 12px;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.source-page canvas {
+  display: block;
+}
+
+.source-overlay-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* A block region. Kept nearly invisible until it matters, so the document
+   stays readable and the highlight is what draws the eye. */
+.source-box {
+  position: absolute;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.source-box:hover,
+.source-box.is-hovered {
+  border-color: var(--brand-600);
+  background: rgba(169, 129, 248, 0.22);
+}
+
+.source-box.is-selected {
+  border-color: var(--brand-600);
+  border-width: 2px;
+  background: rgba(169, 129, 248, 0.3);
+  box-shadow: 0 0 0 2px rgba(169, 129, 248, 0.35);
+}
+
+/* A block with no counterpart in the parsed result: keep it from looking
+   clickable, since selecting it would highlight nothing. */
+.source-box.is-muted {
+  pointer-events: none;
+}
+
+/* The counterpart state on the result side. */
+.markdown-body .docvortex-block {
+  border-radius: 4px;
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.markdown-body .docvortex-block.is-source-hover,
+.markdown-body .docvortex-block:hover {
+  background: rgba(169, 129, 248, 0.18);
+  box-shadow: 0 0 0 1px rgba(169, 129, 248, 0.45);
+}
+
+.markdown-body .docvortex-block.is-source-selected {
+  background: rgba(169, 129, 248, 0.26);
+  box-shadow: 0 0 0 2px rgba(169, 129, 248, 0.6);
+}
+
+/* A table is one block but many cells; highlighting the wrapper keeps the
+   whole table visible as a unit. */
+.markdown-body .docvortex-block table {
+  margin-bottom: 0;
+}
+
 .source-image {
   flex: 1;
   width: 100%;
   min-height: 0;
   border: none;
   background: #fff;
-}
-
-.source-image {
   object-fit: contain;
 }
 

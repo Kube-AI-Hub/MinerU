@@ -6,7 +6,15 @@
    Parsing is done once per file: the request asks for the zip response, which
    carries the Markdown, the structured JSON and the extracted images together.
    Previewing and downloading then work from that single result instead of
-   re-parsing for every format. */
+   re-parsing for every format.
+
+   The source pane and the result pane highlight each other. Both sides key
+   their elements by page index and block index, taken from the parse result,
+   so no extra mapping is needed to point one at the other. */
+import { SourceViewer } from './source-viewer.mjs';
+
+window.MinerUSourceViewer = SourceViewer;
+
 (function () {
   var i18n = window.MinerUPlaygroundI18n;
   var t = i18n.t;
@@ -38,7 +46,13 @@
     filename: '',
     demo: null,
     view: 'markdown',
-    selectedTier: 'standard'
+    selectedTier: 'standard',
+    /* Parse geometry: page -> blocks, and the keys the renderer kept. */
+    blockMap: new Map(),
+    renderedKeys: new Set(),
+    /* Which block the user picked, as "page:index". */
+    selectedBlock: null,
+    viewer: null
   };
 
   function token() {
@@ -115,8 +129,16 @@
     releaseObjectUrls();
     state.artifacts = {};
     state.markdown = '';
+    state.blockMap = new Map();
+    state.renderedKeys = new Set();
+    state.selectedBlock = null;
+    if (state.viewer) {
+      state.viewer.dispose();
+      state.viewer = null;
+    }
     document.getElementById('source-meta').textContent = '';
     var source = document.getElementById('source-body');
+    source.classList.remove('source-viewer');
     source.innerHTML = '';
     var empty = document.createElement('p');
     empty.className = 'muted placeholder';
@@ -134,20 +156,16 @@
     setStatus('');
   }
 
-  /* Preview the chosen file locally. The browser already knows how to draw a
-     PDF or an image, so this needs no server round trip and works for the
-     bundled examples too. */
+  /* Preview the chosen file locally. The browser already knows how to draw an
+     image, so that needs no server round trip; a PDF goes through the viewer
+     because the comparison needs per-block overlays on top of the page. */
   function renderSourcePreview(blob, name) {
     var host = document.getElementById('source-body');
     host.innerHTML = '';
-    var url = trackObjectUrl(URL.createObjectURL(blob));
+    host.classList.remove('source-viewer');
 
     if (/\.pdf$/i.test(name)) {
-      var frame = document.createElement('iframe');
-      frame.className = 'source-frame';
-      frame.title = t('sourcePreview');
-      frame.src = url;
-      host.appendChild(frame);
+      startViewer(host, blob, name);
       return;
     }
 
@@ -155,7 +173,7 @@
       var image = document.createElement('img');
       image.className = 'source-image';
       image.alt = name;
-      image.src = url;
+      image.src = trackObjectUrl(URL.createObjectURL(blob));
       host.appendChild(image);
       return;
     }
@@ -178,7 +196,74 @@
     host.appendChild(note);
   }
 
+  /* The viewer draws the page and the block overlays, and reports clicks back
+     so the result pane can highlight the matching element. */
+  function startViewer(host, blob, name) {
+    if (state.viewer) state.viewer.dispose();
+    state.viewer = new window.MinerUSourceViewer(host, {
+      text: t,
+      autoScroll: true,
+      onSelect: function (block) {
+        selectBlock(block ? blockKey(block) : null);
+      },
+      onHover: function (block) {
+        highlightResult(block ? blockKey(block) : null, 'hover');
+      }
+    });
+    state.viewer.setBlocks(state.blockMap, state.renderedKeys);
+    state.viewer.load(blob, name).catch(function () {
+      /* The viewer reports its own failures in place. */
+    });
+  }
+
+  function blockKey(block) {
+    return block.pageIdx + ':' + block.index;
+  }
+
   /* ------------------------------------------------------------ result view */
+
+  /* The rendered blocks carry the same page/index keys as the parse geometry,
+     so the two panes can point at each other without a second lookup table. */
+  function resultBlocks() {
+    var host = document.getElementById('result');
+    return host ? host.querySelectorAll('.markdown-body .docvortex-block') : [];
+  }
+
+  function highlightResult(key, kind) {
+    resultBlocks().forEach(function (element) {
+      var elementKey = element.getAttribute('data-page-idx') + ':' + element.getAttribute('data-block-index');
+      element.classList.toggle(
+        kind === 'select' ? 'is-source-selected' : 'is-source-hover',
+        key ? elementKey === key : false
+      );
+      if (kind === 'select' && key && elementKey === key) {
+        element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    });
+  }
+
+  /* Selecting in one pane selects in the other: the highlight is a single
+     piece of state, so a click either side clears the previous pick. */
+  function selectBlock(key) {
+    state.selectedBlock = key;
+    if (state.viewer) state.viewer.highlight(key, 'select');
+    highlightResult(key, 'select');
+  }
+
+  function bindResultHighlighting() {
+    resultBlocks().forEach(function (element) {
+      var key = element.getAttribute('data-page-idx') + ':' + element.getAttribute('data-block-index');
+      element.addEventListener('mouseenter', function () {
+        if (state.viewer) state.viewer.highlight(key, 'hover');
+      });
+      element.addEventListener('mouseleave', function () {
+        if (state.viewer) state.viewer.highlight(null, 'hover');
+      });
+      element.addEventListener('click', function () {
+        selectBlock(state.selectedBlock === key ? null : key);
+      });
+    });
+  }
 
   function setResultMarkdown(html) {
     var host = document.getElementById('result');
@@ -201,6 +286,10 @@
         image.alt = t('imageMissing');
       }
     });
+    bindResultHighlighting();
+    /* Keep the pick visible across a re-render, e.g. after a zoom or a tab
+       switch. */
+    if (state.selectedBlock) highlightResult(state.selectedBlock, 'select');
   }
 
   function setResultJson(value) {
@@ -258,7 +347,8 @@
       return;
     }
     /* Render through the engine so the preview matches the WebUI, which uses
-       the same renderer for its Markdown tab. */
+       the same renderer for its Markdown tab. The same response carries the
+       block geometry the source viewer overlays. */
     structured.blob.text().then(function (text) {
       var middle;
       try {
@@ -277,15 +367,37 @@
         })
         .then(function (payload) {
           if (payload && typeof payload.html === 'string') {
+            applyGeometry(payload);
             setResultMarkdown(payload.html);
           } else {
             setResultMarkdown('<pre>' + escapeHtml(state.markdown) + '</pre>');
           }
         })
-        .catch(function () {
+        .catch(function (error) {
+          /* Falling back to the raw Markdown keeps the page usable, but a
+             silent fallback hides the reason the rendered preview is missing,
+             so leave a trail for whoever has to diagnose it. */
+          console.error('MinerU: rendered preview failed, showing raw Markdown', error);
           setResultMarkdown('<pre>' + escapeHtml(state.markdown) + '</pre>');
         });
     });
+  }
+
+  /* Hand the source viewer the geometry, and remember which blocks the
+     renderer kept so an unmatched region is not presented as clickable. */
+  function applyGeometry(payload) {
+    var map = new Map();
+    (payload.blocks || []).forEach(function (block) {
+      var list = map.get(block.page);
+      if (!list) {
+        list = [];
+        map.set(block.page, list);
+      }
+      list.push(block);
+    });
+    state.blockMap = map;
+    state.renderedKeys = new Set(payload.rendered_blocks || []);
+    if (state.viewer) state.viewer.setBlocks(state.blockMap, state.renderedKeys);
   }
 
   function escapeHtml(value) {

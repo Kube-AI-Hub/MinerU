@@ -199,13 +199,13 @@ class TestServingApp:
 
     def test_playground_assets_are_served_from_the_root(self, client):
         """Relative references from / must resolve without a prefix."""
-        for name in ("index.css", "app.js", "i18n.js"):
+        for name in ("index.css", "app.mjs", "i18n.js", "source-viewer.mjs"):
             assert client.get(f"/{name}").status_code == 200, name
 
     def test_playground_refers_to_everything_relatively(self):
         """Absolute paths would escape a proxy that strips its own prefix."""
         markup = (serve_app.ASSETS_DIR / "index.html").read_text(encoding="utf-8")
-        script = (serve_app.ASSETS_DIR / "app.js").read_text(encoding="utf-8")
+        script = (serve_app.ASSETS_DIR / "app.mjs").read_text(encoding="utf-8")
 
         for document in (markup, script):
             for line in document.splitlines():
@@ -219,7 +219,7 @@ class TestServingApp:
 
     def test_assets_are_revalidated_instead_of_heuristically_cached(self, client):
         """A stale page after an image upgrade is hard to diagnose remotely."""
-        for path in ("/", "/index.css", "/app.js", "/i18n.js", serve_app.CONFIG_PATH):
+        for path in ("/", "/index.css", "/app.mjs", "/i18n.js", serve_app.CONFIG_PATH):
             response = client.get(path)
             assert response.headers.get("cache-control") == "no-cache", path
 
@@ -249,9 +249,21 @@ class TestServingApp:
         response = client.post(serve_app.RENDER_PATH, json={"middle_json": middle_json})
 
         assert response.status_code == 200, response.text
-        html = response.json()["html"]
+        payload = response.json()
+        html = payload["html"]
         assert "<" in html
         assert "flow duration curves" in html.lower()
+        # The source viewer needs the geometry to draw its overlays, and the
+        # rendered keys to know which of them can be selected.
+        assert payload["blocks"], "block geometry is required for cross-highlighting"
+        assert payload["rendered_blocks"], "rendered block keys are required"
+        sample = payload["blocks"][0]
+        assert {"page", "index", "type", "bbox"} <= set(sample)
+        assert len(sample["bbox"]) == 4
+        assert all(0.0 <= value <= 1.0 for value in sample["bbox"])
+        assert set(payload["rendered_blocks"]) <= {
+            f"{block['page']}:{block['index']}" for block in payload["blocks"]
+        }
 
     def test_render_endpoint_rejects_a_missing_body(self, client):
         assert client.post(serve_app.RENDER_PATH, json={}).status_code == 400
@@ -305,7 +317,7 @@ class TestServingApp:
 class TestPackaging:
     def test_assets_ship_with_the_package(self):
         assert serve_app.ASSETS_DIR.is_dir()
-        for name in ("index.html", "index.css", "app.js"):
+        for name in ("index.html", "index.css", "app.mjs", "source-viewer.mjs"):
             assert (serve_app.ASSETS_DIR / name).is_file(), name
 
     def test_demo_documents_ship_with_the_package(self):
@@ -336,7 +348,11 @@ class TestResponseParsing:
 
     @pytest.fixture()
     def script(self):
-        return (serve_app.ASSETS_DIR / "app.js").read_text(encoding="utf-8")
+        return (serve_app.ASSETS_DIR / "app.mjs").read_text(encoding="utf-8")
+
+    @pytest.fixture()
+    def viewer(self):
+        return (serve_app.ASSETS_DIR / "source-viewer.mjs").read_text(encoding="utf-8")
 
     def test_reads_the_markdown_from_the_archive(self, script):
         """The zip response carries the Markdown as markdown.md."""
@@ -363,6 +379,11 @@ class TestResponseParsing:
         """Using the engine's renderer keeps the preview identical to the WebUI."""
         assert "./render" in script
 
+    def test_keys_both_panes_by_page_and_block(self, script):
+        """Cross-highlighting needs one shared key on both sides."""
+        assert "data-page-idx" in script
+        assert "data-block-index" in script
+
     def test_uses_relative_paths_only(self, script):
         """Absolute paths would escape a proxy that strips its own prefix."""
         for line in script.splitlines():
@@ -371,6 +392,21 @@ class TestResponseParsing:
                 continue
             assert "'/v1" not in stripped, stripped
             assert '"/v1' not in stripped, stripped
+
+    def test_source_viewer_places_overlays_from_the_parse_result(self, viewer):
+        """Overlay geometry comes from middle_json, not from a second parse."""
+        assert "blockMap" in viewer
+        assert "bbox" in viewer
+
+    def test_source_viewer_reports_selection_both_ways(self, viewer):
+        """A click in the source has to reach the result pane."""
+        assert "onSelect" in viewer
+        assert "onHover" in viewer
+
+    def test_source_viewer_loads_its_bundle_relatively(self, viewer):
+        """The pdf.js bundle ships with the page, so it must resolve relatively."""
+        assert "./vendor/pdfjs" in viewer
+        assert "https://" not in viewer
 
 
 def test_health_payload_is_json_serialisable(tmp_path, model_home):
