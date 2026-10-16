@@ -6,14 +6,16 @@
 
 | 路由 | 用途 |
 | --- | --- |
-| `/` | Playground 页面：选文件、选档位、看 Markdown 结果 |
+| `/` | Playground 页面：选文件、选解析等级、看 Markdown 结果 |
 | `/health` | 健康检查，供平台的探针使用 |
 | `/config` | Playground 的配置（版本与内置示例文件清单） |
+| `/render` | 把 `middle_json` 渲染成带格式的 HTML，并返回区块几何（供对照高亮） |
+| `/download` | 从结果归档就地转换 HTML / LaTeX / DOCX / EPUB / PDF |
 | `/v1/*` | MinerU V1 解析 API，与 `mineru-kit api-server` 相同 |
 | `/docs`、`/openapi.json` | Swagger UI 与接口描述 |
 | `/demo/*` | 内置示例文档 |
 
-Playground 与 Swagger 都使用**相对地址**引用自身资源。平台的推理代理会剥掉自己的路径前缀，绝对地址会指向平台本身而不是本服务，所以页面里不出现以 `/` 开头的接口地址。
+Playground 与接口文档都使用**相对地址**引用自身资源。平台的推理代理会剥掉自己的路径前缀，绝对地址会指向平台本身而不是本服务，所以页面里不出现以 `/` 开头的接口地址。
 
 ## 独立运行
 
@@ -84,9 +86,11 @@ mineru-kit models download MinerU-4_models_torch -s modelscope
 
 页面内置两个示例文档（`/demo/demo1.pdf`、`/demo/demo2.pdf`），点一下即可试，不必先自备文件。
 
-- **解析**页签：选文件或点内置示例，选档位（`flash` / `basic` / `standard` / `advanced`）、OCR 模式与页码范围，结果区显示 Markdown，可复制或下载。
-- **API** 页签：内嵌 `/docs` 的 Swagger UI，可以直接在页面上调一次 `/v1/file_parse`。
-- 页面读 `?lang=` 与 `?token=`：前者跟随平台语言切换中英文，后者勾选「使用我的访问令牌」后作为 `Authorization` 头发出。
+- **解析**页签：选文件或点内置示例，选解析等级、勾选强制 OCR、用起止滑块选页码范围，结果区显示带格式的 Markdown，可切换 JSON 视图。左侧会按引擎真实阶段点亮进度（准备请求 → 提交任务 → 排队 → 解析中 → 下载结果 → 整理输出 → 完成）并计时。
+- **对照**：中间栏是源文件预览（PDF 可翻页、跳页、缩放），与右侧结果双向高亮——鼠标移到任一侧的区块，另一侧同时高亮，点击可固定选中。
+- **下载**：Markdown / JSON / Structured JSON 直接取自解析产物；HTML / LaTeX / DOCX / EPUB / PDF 由 `/download` 用 WebUI 同一套 renderer 就地转换，**不需要 API key**（LaTeX 为 `_latex.zip`，PDF 为 `_rendered.pdf`）；ZIP 是完整产物包。
+- **API** 页签：内嵌接口文档（RapiDoc），可以直接在页面上调一次 `/v1/file_parse`。
+- 页面读 `?lang=` 与 `?token=`：前者跟随平台语言切换中英文，后者在勾选「使用我的访问令牌」后作为 `Authorization` 头发出，API 页签的调用同样会带上它。
 
 静态资源带 `Cache-Control: no-cache`。它们随引擎镜像变化，若被浏览器启发式缓存，升级后会继续渲染旧页面，现象难以从外部定位。
 

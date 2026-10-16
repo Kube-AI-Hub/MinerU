@@ -6,14 +6,16 @@ A container port usually carries one service, so these are separated by route ra
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Playground: pick a file, pick a tier, read the Markdown |
+| `/` | Playground: pick a file, pick a parsing level, read the Markdown |
 | `/health` | Health check for the platform's probe |
 | `/config` | Playground configuration (version and bundled examples) |
+| `/render` | Render `middle_json` to formatted HTML and return block geometry (for the comparison highlight) |
+| `/download` | Convert a result archive in place to HTML / LaTeX / DOCX / EPUB / PDF |
 | `/v1/*` | The MinerU V1 parse API, same as `mineru-kit api-server` |
 | `/docs`, `/openapi.json` | Swagger UI and the API description |
 | `/demo/*` | Bundled example documents |
 
-Both the Playground and Swagger refer to their own assets by **relative** path. A platform's inference proxy strips its own prefix before forwarding, so an absolute path would resolve against the platform instead of this service.
+Both the Playground and the interface documentation refer to their own assets by **relative** path. A platform's inference proxy strips its own prefix before forwarding, so an absolute path would resolve against the platform instead of this service.
 
 ## Running it standalone
 
@@ -84,9 +86,11 @@ A platform probe cannot send an Authorization header, so this route stays reacha
 
 Two example documents ship with the page (`/demo/demo1.pdf`, `/demo/demo2.pdf`), so a first run needs no file of your own.
 
-- **Parse** tab: choose a file or click an example, pick a tier (`flash` / `basic` / `standard` / `advanced`), an OCR mode and a page range; the result pane shows the Markdown, ready to copy or download.
-- **API** tab: the Swagger UI from `/docs`, embedded, so `/v1/file_parse` can be called from the page.
-- The page reads `?lang=` and `?token=`: the first follows the platform's language, the second is sent as an `Authorization` header when "Use my access token" is ticked.
+- **Parse** tab: choose a file or click an example, pick a parsing level, tick Force OCR, and select a page range with the two sliders; the result pane shows formatted Markdown and can switch to a JSON view. The stage list on the left lights up as the engine reports its own progress (preparing request → submitting job → queued → parsing → downloading result → assembling output → done) with a running timer.
+- **Comparison**: the middle column previews the source document (PDFs page, jump and zoom), and highlights are bidirectional with the result pane — hover a block on either side and the other follows; click to pin the selection.
+- **Download**: Markdown / JSON / Structured JSON come straight from the parse artifacts; HTML / LaTeX / DOCX / EPUB / PDF are converted in place by `/download` using the same renderer as the WebUI and need **no API key** (LaTeX arrives as `_latex.zip`, PDF as `_rendered.pdf`); ZIP is the full artifact bundle.
+- **API** tab: the interface documentation (RapiDoc), embedded, so `/v1/file_parse` can be called from the page.
+- The page reads `?lang=` and `?token=`: the first follows the platform's language, the second is sent as an `Authorization` header when "Use my access token" is ticked, and the API tab's calls carry it too.
 
 Static assets carry `Cache-Control: no-cache`. They change with the engine image, and a heuristically cached copy would keep rendering a previous version's page after an upgrade, which is hard to diagnose from the outside.
 
