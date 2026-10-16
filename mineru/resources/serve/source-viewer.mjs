@@ -10,10 +10,18 @@
    Overlays are positioned from the normalized bboxes in the parse result's
    middle_json, so no extra server work is needed to place them. */
 const PDFJS_BASE = './vendor/pdfjs';
-const CMAP_URL = `${PDFJS_BASE}/cmaps/`;
-const STANDARD_FONT_URL = `${PDFJS_BASE}/standard_fonts/`;
-const WASM_URL = `${PDFJS_BASE}/wasm/`;
-const WORKER_URL = `${PDFJS_BASE}/legacy/build/pdf.worker.min.mjs`;
+
+/* The worker, the character maps and the standard fonts all resolve against
+   this module rather than the document. A page served at / or under the
+   platform's proxy prefix would otherwise look for them relative to the
+   document, and a missing cMap or font silently drops text from the render —
+   which is how a Chinese PDF comes out blank. */
+const moduleUrl = (path) => new URL(path, import.meta.url).href;
+
+const CMAP_URL = moduleUrl(`${PDFJS_BASE}/cmaps/`);
+const STANDARD_FONT_URL = moduleUrl(`${PDFJS_BASE}/standard_fonts/`);
+const WASM_URL = moduleUrl(`${PDFJS_BASE}/wasm/`);
+const WORKER_URL = moduleUrl(`${PDFJS_BASE}/legacy/build/pdf.worker.min.mjs`);
 
 const MIN_RENDER_SCALE = 0.4;
 const MAX_RENDER_SCALE = 3;
@@ -24,7 +32,9 @@ export class SourceViewer {
     this.options = options || {};
     this.text = this.options.text || ((name) => name);
     this.pdf = null;
+    /* Indexed by page number; index 0 is unused. */
     this.pages = [];
+    this.pageCount = 0;
     this.scale = null;
     /* page index -> array of { block, element } in page coordinates. */
     this.overlays = new Map();
@@ -32,6 +42,9 @@ export class SourceViewer {
     this.hovered = null;
     this.observer = null;
     this.resizeFrame = null;
+    this.scrollFrame = null;
+    this.onScroll = null;
+    this.programmaticScroll = 0;
     this.disposed = false;
     this.renderToken = 0;
   }
@@ -52,14 +65,14 @@ export class SourceViewer {
 
     let pdfjs;
     try {
-      pdfjs = await import(`${PDFJS_BASE}/legacy/build/pdf.min.mjs`);
+      pdfjs = await import(moduleUrl(`${PDFJS_BASE}/legacy/build/pdf.min.mjs`));
     } catch (error) {
       status.textContent = this.text('pdfLoadFailed');
       return;
     }
     if (this.disposed || token !== this.renderToken) return;
 
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(WORKER_URL, import.meta.url).href;
+    pdfjs.GlobalWorkerOptions.workerSrc = WORKER_URL;
 
     const scroll = document.createElement('div');
     scroll.className = 'source-scroll';
@@ -90,8 +103,12 @@ export class SourceViewer {
       holder.className = 'source-page';
       holder.dataset.pageNumber = String(pageNumber);
       scroll.appendChild(holder);
-      this.pages.push({ holder, pageNumber, viewport: null, canvas: null });
+      /* Indexed by page number so a page is reachable from its own number;
+         the array is built once and never re-assigned during rendering, or a
+         second pass would clear what the first one drew. */
+      this.pages[pageNumber] = { holder, pageNumber, viewport: null, canvas: null };
     }
+    this.pageCount = this.pdf.numPages;
 
     await this.renderPages(token);
     this.fitWidth();
@@ -101,15 +118,9 @@ export class SourceViewer {
     const bar = document.createElement('div');
     bar.className = 'source-toolbar';
 
-    const label = document.createElement('span');
-    label.className = 'source-name';
-    label.textContent = name;
-    bar.appendChild(label);
-
-    const spacer = document.createElement('span');
-    spacer.className = 'source-spacer';
-    bar.appendChild(spacer);
-
+    /* Page navigation, the same controls the WebUI offers: previous, a page
+       box, the total, next. The file name is not shown — the pane already has
+       a heading, and a long name pushed the controls off the bar. */
     const makeButton = (text, title, onClick) => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -121,6 +132,29 @@ export class SourceViewer {
       return button;
     };
 
+    this.prevButton = makeButton('‹', this.text('pdfPrevious'), () => this.goToPage(this.currentPage - 1));
+
+    this.pageInput = document.createElement('input');
+    this.pageInput.type = 'number';
+    this.pageInput.min = '1';
+    this.pageInput.max = String(pageCount);
+    this.pageInput.value = '1';
+    this.pageInput.className = 'source-page-input';
+    this.pageInput.setAttribute('aria-label', this.text('pdfPage'));
+    this.pageInput.addEventListener('change', () => this.goToPage(Number(this.pageInput.value)));
+    bar.appendChild(this.pageInput);
+
+    this.pageTotal = document.createElement('span');
+    this.pageTotal.className = 'source-page-total';
+    this.pageTotal.textContent = `/ ${pageCount}`;
+    bar.appendChild(this.pageTotal);
+
+    this.nextButton = makeButton('›', this.text('pdfNext'), () => this.goToPage(this.currentPage + 1));
+
+    const spacer = document.createElement('span');
+    spacer.className = 'source-spacer';
+    bar.appendChild(spacer);
+
     makeButton('−', this.text('pdfZoomOut'), () => this.zoom(1 / 1.2));
     this.scaleLabel = document.createElement('span');
     this.scaleLabel.className = 'source-scale';
@@ -129,6 +163,68 @@ export class SourceViewer {
     makeButton(this.text('pdfFitWidth'), this.text('pdfFitWidth'), () => this.fitWidth());
 
     this.host.insertBefore(bar, this.host.firstChild);
+    this.currentPage = 1;
+
+    /* Keep the page box in step when the user scrolls by hand instead of using
+       the arrows. Without this the box keeps showing the last page that was
+       jumped to, which reads as a wrong page number. */
+    this.onScroll = () => {
+      if (this.scrollFrame) return;
+      this.scrollFrame = requestAnimationFrame(() => {
+        this.scrollFrame = null;
+        this.syncPageFromScroll();
+      });
+    };
+    this.scroll.addEventListener('scroll', this.onScroll, { passive: true });
+  }
+
+  /* The current page is the one covering the top of the viewport. */
+  syncPageFromScroll() {
+    if (!this.scroll || !this.pageCount) return;
+    /* A smooth scroll is still in flight: recomputing now would report the
+       page passing by and fight the destination the user just asked for. */
+    if (this.programmaticScroll && Date.now() - this.programmaticScroll < 600) return;
+    const top = this.scroll.getBoundingClientRect().top;
+    /* Start at the first page, not the previous value: with the container's
+       padding the very first page is slightly below the top edge and does not
+       qualify, which would otherwise leave a stale page number on screen. */
+    let visible = 1;
+    for (let pageNumber = 1; pageNumber <= this.pageCount; pageNumber += 1) {
+      const entry = this.pages[pageNumber];
+      if (!entry || !entry.holder) continue;
+      const box = entry.holder.getBoundingClientRect();
+      /* A page still in view but scrolled past has its top above the viewport,
+         so the last such page is the one being read. */
+      if (box.top - top <= 1) visible = pageNumber;
+      else break;
+    }
+    if (visible !== this.currentPage) {
+      this.currentPage = visible;
+      this.updatePageControls();
+    }
+  }
+
+  /* Jump to a page and report it, so the toolbar stays in step with a click
+     on a block in the result pane. */
+  goToPage(pageNumber) {
+    if (!this.pageCount) return;
+    const target = Math.min(this.pageCount, Math.max(1, Number(pageNumber) || 1));
+    const entry = this.pages[target];
+    /* Record the destination before scrolling: the scroll listener would
+       otherwise report the pages passing by while a smooth scroll is in
+       flight, and the box would settle on the wrong number. */
+    this.currentPage = target;
+    this.updatePageControls();
+    if (entry && entry.holder) {
+      this.programmaticScroll = Date.now();
+      entry.holder.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  }
+
+  updatePageControls() {
+    if (this.pageInput) this.pageInput.value = String(this.currentPage);
+    if (this.prevButton) this.prevButton.disabled = this.currentPage <= 1;
+    if (this.nextButton) this.nextButton.disabled = this.currentPage >= this.pageCount;
   }
 
   /* ----------------------------------------------------------- page render */
@@ -137,7 +233,11 @@ export class SourceViewer {
     const available = this.scroll ? this.scroll.clientWidth - 24 : 800;
     const targetScale = this.scale || Math.min(2, Math.max(MIN_RENDER_SCALE, available / 612));
 
-    for (const entry of this.pages) {
+    /* Pages are indexed by their number, so iterate that range rather than the
+       array: index 0 is unused and must not be visited. */
+    for (let pageNumber = 1; pageNumber <= this.pageCount; pageNumber += 1) {
+      const entry = this.pages[pageNumber];
+      if (!entry) continue;
       if (this.disposed || token !== this.renderToken) return;
       const page = await this.pdf.getPage(entry.pageNumber);
       if (this.disposed || token !== this.renderToken) return;
@@ -165,15 +265,14 @@ export class SourceViewer {
       }).promise;
       if (this.disposed || token !== this.renderToken) return;
 
-      this.pages[entry.pageNumber] = entry;
       this.drawOverlays(entry);
+      this.reportPage(entry);
     }
 
     this.scale = targetScale;
     this.updateScaleLabel();
     this.applyHighlight();
   }
-
   /* --------------------------------------------------------------- overlays */
 
   /* One rectangle per parsed block. Clicking toggles the selection, which the
@@ -229,11 +328,12 @@ export class SourceViewer {
   setBlocks(blockMap, renderedKeys) {
     this.blockMap = blockMap;
     this.renderedKeys = renderedKeys || new Set();
-    if (!this.pages.length) return;
-    this.pages.forEach((entry) => {
-      if (!entry || !entry.holder || !entry.viewport) return;
+    if (!this.pageCount) return;
+    for (let pageNumber = 1; pageNumber <= this.pageCount; pageNumber += 1) {
+      const entry = this.pages[pageNumber];
+      if (!entry || !entry.holder || !entry.viewport) continue;
       this.drawOverlays(entry);
-    });
+    }
     this.applyHighlight();
   }
 
@@ -307,11 +407,12 @@ export class SourceViewer {
     if (!this.pdf) return;
     const token = ++this.renderToken;
     this.overlays = new Map();
-    this.pages.forEach((entry) => {
-      if (!entry || !entry.holder) return;
+    for (let pageNumber = 1; pageNumber <= this.pageCount; pageNumber += 1) {
+      const entry = this.pages[pageNumber];
+      if (!entry || !entry.holder) continue;
       entry.holder.innerHTML = '';
       entry.layer = null;
-    });
+    }
     await this.renderPages(token);
   }
 
@@ -327,11 +428,23 @@ export class SourceViewer {
     this.disposed = true;
     this.renderToken += 1;
     if (this.resizeFrame) cancelAnimationFrame(this.resizeFrame);
+    if (this.scrollFrame) cancelAnimationFrame(this.scrollFrame);
+    if (this.scroll && this.onScroll) this.scroll.removeEventListener('scroll', this.onScroll);
     this.overlays = new Map();
     this.pages = [];
+    this.pageCount = 0;
     this.pdf = null;
     this.selected = null;
     this.hovered = null;
     if (this.host) this.host.innerHTML = '';
+  }
+
+  /* Tell the page how far rendering has come. Loading a large PDF is the
+     slowest step before the user can compare anything, and without this the
+     pane just sits empty with no way to tell "working" from "stuck". */
+  reportPage(entry) {
+    if (this.options.onProgress) {
+      this.options.onProgress({ rendered: entry.pageNumber, total: this.pageCount });
+    }
   }
 }

@@ -367,6 +367,30 @@ class TestResponseParsing:
         assert "'middle_json'" in script
         assert "'structured_content'" in script
 
+    def test_requests_zip_when_submitting(self, script):
+        """The result endpoint only serves an archive if zip was requested.
+
+        Asking for it at result time returns 400 "Request zip in output_formats
+        when submitting the task".
+        """
+        assert "'zip'" in script
+        assert "response_format=zip" in script
+
+    def test_does_not_send_response_format_on_submit(self, script):
+        """The task API forbids unknown submit parameters."""
+        submit = script[script.index("./v1/tasks?"): script.index("./v1/tasks?") + 400]
+        assert "response_format" not in submit
+
+    def test_shows_the_engines_own_stages(self, script):
+        """Progress must come from the task document, not a guessed bar."""
+        assert "queued" in script
+        assert "running" in script
+        assert "pollTask" in script
+
+    def test_force_ocr_locks_the_mode(self, script):
+        """Force OCR means "ignore the text layer", which is the ocr mode."""
+        assert "forceOcr" in script
+
     def test_marks_the_formats_that_need_an_api_key(self, script):
         """html/latex/docx are refused without a key, so the menu disables them."""
         assert "needsKey" in script
@@ -407,6 +431,39 @@ class TestResponseParsing:
         """The pdf.js bundle ships with the page, so it must resolve relatively."""
         assert "./vendor/pdfjs" in viewer
         assert "https://" not in viewer
+
+    def test_source_viewer_anchors_assets_to_the_module(self, viewer):
+        """Character maps and fonts must resolve against this module.
+
+        Resolved against the document instead, a page served at / or under the
+        platform's proxy prefix looks for them in the wrong place, and a missing
+        cMap silently drops text from the render — how a Chinese PDF ends up
+        blank.
+        """
+        assert "import.meta.url" in viewer
+        for asset in ("cmaps/", "standard_fonts/", "wasm/", "pdf.worker.min.mjs"):
+            assert asset in viewer, asset
+
+    def test_source_viewer_indexes_pages_by_number(self, viewer):
+        """Indexing must be by page number and stay stable while rendering.
+
+        Building the list with push and then writing back by page number shifts
+        every entry by one: page 1 lands at two indices, the last page falls
+        outside the array, and the render loop stops early — pages then alternate
+        between drawn and blank.
+        """
+        assert "this.pages[pageNumber] = " in viewer
+        assert "this.pages.push(" not in viewer
+
+    def test_source_viewer_reports_progress(self, viewer):
+        """Loading a large PDF needs visible progress, not an empty pane."""
+        assert "onProgress" in viewer
+
+    def test_source_viewer_toolbar_has_page_navigation(self, viewer):
+        """The toolbar shows a page box and navigation, not the file name."""
+        assert "source-page-input" in viewer
+        assert "source-page-total" in viewer
+        assert "goToPage" in viewer
 
 
 def test_health_payload_is_json_serialisable(tmp_path, model_home):

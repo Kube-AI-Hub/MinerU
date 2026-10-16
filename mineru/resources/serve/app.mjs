@@ -121,7 +121,168 @@ window.MinerUSourceViewer = SourceViewer;
     });
   }
 
-  /* --------------------------------------------------------- source preview */
+  /* -------------------------------------------------------------- progress */
+
+  /* The stages the panel walks through. `queued` and `parsing` come from the
+     engine's own task document, so a stall is visible where it happens rather
+     than as one long "parsing…" line. */
+  var STAGES = ['prepare', 'submit', 'queued', 'parsing', 'download', 'collect', 'done'];
+
+  var progress = { started: 0, timer: null, current: null };
+
+  function buildProgressSteps() {
+    var list = document.getElementById('progress-steps');
+    list.innerHTML = '';
+    STAGES.forEach(function (stage) {
+      var item = document.createElement('li');
+      item.className = 'progress-step';
+      item.dataset.stage = stage;
+      var dot = document.createElement('span');
+      dot.className = 'progress-dot';
+      item.appendChild(dot);
+      var label = document.createElement('span');
+      label.textContent = t('stage_' + stage);
+      item.appendChild(label);
+      list.appendChild(item);
+    });
+  }
+
+  /* Mark a stage and everything before it as done. A later stage replaces the
+     current one, which is how a poll loop reports forward progress. */
+  function setStage(stage, kind) {
+    var index = STAGES.indexOf(stage);
+    if (index < 0) return;
+    progress.current = stage;
+    document.querySelectorAll('.progress-step').forEach(function (item) {
+      var itemIndex = STAGES.indexOf(item.dataset.stage);
+      var isCurrent = itemIndex === index;
+      /* A stage is exactly one of done / active / failed. Marking the failed
+         stage as both active and failed left it looking in-progress with an
+         error colour, which is contradictory. */
+      item.classList.toggle('is-done', itemIndex < index || (isCurrent && kind === 'done'));
+      item.classList.toggle('is-active', isCurrent && kind !== 'done' && kind !== 'failed');
+      item.classList.toggle('is-failed', isCurrent && kind === 'failed');
+    });
+    updateElapsed();
+  }
+
+  function updateElapsed() {
+    if (!progress.started) return;
+    var seconds = ((Date.now() - progress.started) / 1000).toFixed(2);
+    var node = document.getElementById('progress-elapsed');
+    var failed = document.querySelector('.progress-step.is-failed');
+    if (failed) {
+      node.textContent = t('stageFailed', { seconds: seconds });
+      node.className = 'progress-elapsed is-failed';
+    } else if (progress.current === 'done') {
+      node.textContent = t('stageDone', { seconds: seconds });
+      node.className = 'progress-elapsed is-done';
+    } else {
+      node.textContent = t('stageRunning', {
+        stage: t('stage_' + (progress.current || 'prepare')),
+        seconds: seconds
+      });
+      node.className = 'progress-elapsed';
+    }
+  }
+
+  function startProgress() {
+    progress.started = Date.now();
+    document.getElementById('progress').hidden = false;
+    buildProgressSteps();
+    setStage('prepare');
+    if (progress.timer) clearInterval(progress.timer);
+    progress.timer = setInterval(updateElapsed, 100);
+  }
+
+  function stopProgress() {
+    if (progress.timer) clearInterval(progress.timer);
+    progress.timer = null;
+    updateElapsed();
+  }
+
+  /* ------------------------------------------------------------------- page */
+
+  /* Page range as two sliders, the same shape the WebUI uses. They stay
+     disabled until a PDF's page count is known, so an empty range cannot be
+     submitted as a real one. */
+  function initPageRange() {
+    var start = document.getElementById('page-start');
+    var end = document.getElementById('page-end');
+    var startOut = document.getElementById('page-start-value');
+    var endOut = document.getElementById('page-end-value');
+
+    function sync(changed) {
+      var total = Number(start.max) || 1;
+      var a = Number(start.value);
+      var b = Number(end.value);
+      if (changed === 'start' && a > b) {
+        end.value = String(a);
+        b = a;
+      }
+      if (changed === 'end' && b < a) {
+        start.value = String(b);
+        a = b;
+      }
+      startOut.textContent = String(a);
+      endOut.textContent = String(b);
+      var selected = b - a + 1;
+      document.getElementById('page-summary').textContent = t('pageSelected', {
+        from: a,
+        to: b,
+        count: selected,
+        total: total
+      });
+    }
+
+    start.addEventListener('input', function () {
+      sync('start');
+    });
+    end.addEventListener('input', function () {
+      sync('end');
+    });
+    sync();
+  }
+
+  function setPageCount(count) {
+    var start = document.getElementById('page-start');
+    var end = document.getElementById('page-end');
+    if (!count || count < 1) {
+      start.max = '1';
+      end.max = '1';
+      start.disabled = true;
+      end.disabled = true;
+      document.getElementById('page-summary').textContent = t('pageUnknown');
+      return;
+    }
+    start.max = String(count);
+    end.max = String(count);
+    start.value = '1';
+    end.value = String(count);
+    start.disabled = false;
+    end.disabled = false;
+    document.getElementById('page-summary').textContent = t('pageSelected', {
+      from: 1,
+      to: count,
+      count: count,
+      total: count
+    });
+  }
+
+  function pageRangeValue() {
+    var start = document.getElementById('page-start');
+    var end = document.getElementById('page-end');
+    if (start.disabled || !start.max || Number(start.max) <= 1) return '';
+    var a = Number(start.value);
+    var b = Number(end.value);
+    if (a === 1 && b === Number(start.max)) return '';
+    return a === b ? String(a) : a + '-' + b;
+  }
+
+  function forceOcr() {
+    var box = document.getElementById('force-ocr');
+    return !!(box && box.checked);
+  }
 
   /* Clear the preview and the result, including any object URLs the preview
      created, so a new file never inherits the previous one's blobs. */
@@ -208,6 +369,16 @@ window.MinerUSourceViewer = SourceViewer;
       },
       onHover: function (block) {
         highlightResult(block ? blockKey(block) : null, 'hover');
+      },
+      onProgress: function (info) {
+        /* The page count is only known once pdf.js has parsed the document,
+           which is also when the range sliders can be enabled. */
+        if (info.total && Number(document.getElementById('page-start').max) !== info.total) {
+          setPageCount(info.total);
+        }
+        if (info.rendered === info.total && state.filename) {
+          document.getElementById('source-meta').textContent = state.filename;
+        }
       }
     });
     state.viewer.setBlocks(state.blockMap, state.renderedKeys);
@@ -486,7 +657,6 @@ window.MinerUSourceViewer = SourceViewer;
     link.click();
     setStatus(t('downloaded', { name: base + '.' + format.ext }), 'ok');
   }
-
   /* --------------------------------------------------------------- parsing */
 
   function demoButton(name) {
@@ -555,13 +725,17 @@ window.MinerUSourceViewer = SourceViewer;
     }
     var query = new URLSearchParams();
     query.set('tier', state.selectedTier);
-    query.set('ocr_mode', document.getElementById('ocr-mode').value);
-    var range = document.getElementById('page-range').value.trim();
+    /* Force OCR overrides the mode: it means "ignore the text layer", which is
+       exactly the `ocr` mode. */
+    query.set('ocr_mode', forceOcr() ? 'ocr' : document.getElementById('ocr-mode').value);
+    var range = pageRangeValue();
     if (range) query.set('page_range', range);
-    /* One request carries every format the engine can produce without an API
-       key, so preview and download both work from this single result. */
-    query.set('response_format', 'zip');
-    ['markdown', 'middle_json', 'structured_content'].forEach(function (format) {
+    /* Ask for `zip` alongside the formats the preview needs: the result
+       endpoint only serves an archive when zip was requested up front, and one
+       archive is what carries the Markdown, the JSON and the images together.
+       `response_format` itself is not a submit parameter — it is chosen when
+       the result is fetched. */
+    ['markdown', 'middle_json', 'structured_content', 'zip'].forEach(function (format) {
       query.append('output_formats', format);
     });
 
@@ -676,12 +850,17 @@ window.MinerUSourceViewer = SourceViewer;
     }, Promise.resolve());
   }
 
+  /* Submit as an async task and poll it, rather than blocking on the
+     synchronous call. The task document reports the engine's own status
+     (`queued` then `running`), so the progress panel shows which stage the
+     request actually reached instead of one opaque wait. */
   function submit() {
     var pending = buildRequest();
     if (!pending) return;
     var button = document.getElementById('submit');
     button.disabled = true;
-    setStatus(t('parsing'));
+    setStatus('');
+    startProgress();
     var started = Date.now();
 
     pending
@@ -690,25 +869,35 @@ window.MinerUSourceViewer = SourceViewer;
         state.filename = request.name;
         document.getElementById('source-meta').textContent = request.name;
         renderSourcePreview(request.blob, request.name);
-        return fetch('./v1/file_parse?' + request.query.toString(), {
+        setStage('submit');
+        return fetch('./v1/tasks?' + request.query.toString(), {
           method: 'POST',
           headers: authHeaders(),
           body: request.form
         }).then(function (response) {
-          if (!response.ok) {
-            return response.json().then(
-              function (payload) {
-                throw new Error(extractError(payload) || 'HTTP ' + response.status);
-              },
-              function () {
-                throw new Error('HTTP ' + response.status);
-              }
-            );
-          }
+          return response.json().then(function (payload) {
+            if (!response.ok) {
+              throw new Error(extractError(payload) || 'HTTP ' + response.status);
+            }
+            return payload.task_id;
+          });
+        });
+      })
+      .then(function (taskId) {
+        setStage('queued');
+        return pollTask(taskId);
+      })
+      .then(function () {
+        setStage('download');
+        return fetch('./v1/tasks/' + currentTaskId + '/result?response_format=zip', {
+          headers: authHeaders()
+        }).then(function (response) {
+          if (!response.ok) throw new Error('HTTP ' + response.status);
           return response.blob();
         });
       })
       .then(function (zipBlob) {
+        setStage('collect');
         return unpackZip(zipBlob).then(function (entries) {
           return storeArtifacts(entries, zipBlob);
         });
@@ -720,14 +909,62 @@ window.MinerUSourceViewer = SourceViewer;
         var seconds = ((Date.now() - started) / 1000).toFixed(1);
         renderResult();
         refreshDownloadMenu();
+        setStage('done', 'done');
+        stopProgress();
         setStatus(t('done', { seconds: seconds }), 'ok');
       })
       .catch(function (error) {
+        /* Mark where it stopped rather than the whole panel, so the stage that
+           failed is the one the user looks at. */
+        setStage(progress.current || 'prepare', 'failed');
+        stopProgress();
         setStatus(t('failed', { message: error.message }), 'error');
       })
       .finally(function () {
         button.disabled = false;
       });
+  }
+
+  /* Poll the task document until it reaches a terminal state. Each poll also
+     carries the failure reason, so a rejected document explains itself instead
+     of timing out silently. */
+  var currentTaskId = null;
+
+  function pollTask(taskId) {
+    currentTaskId = taskId;
+    var deadline = Date.now() + 60 * 60 * 1000;
+    return new Promise(function (resolve, reject) {
+      var tick = function () {
+        if (Date.now() > deadline) {
+          reject(new Error(t('taskTimeout')));
+          return;
+        }
+        fetch('./v1/tasks/' + taskId, { headers: authHeaders() })
+          .then(function (response) {
+            return response.json();
+          })
+          .then(function (payload) {
+            var status = payload && payload.status;
+            if (status === 'completed') {
+              setStage('parsing', 'done');
+              resolve(payload);
+              return;
+            }
+            if (status === 'failed' || status === 'cancelled') {
+              reject(new Error(extractError(payload) || status));
+              return;
+            }
+            /* `running` means the engine picked the job up and is parsing;
+               anything else is still queued. */
+            setStage(status === 'running' ? 'parsing' : 'queued');
+            setTimeout(tick, 700);
+          })
+          .catch(function (error) {
+            reject(error);
+          });
+      };
+      tick();
+    });
   }
 
   /* ------------------------------------------------------------------- API */
@@ -756,6 +993,7 @@ window.MinerUSourceViewer = SourceViewer;
     buildTierTicks();
     renderTier();
     buildDownloadMenu();
+    initPageRange();
 
     document.getElementById('tier').addEventListener('input', renderTier);
     document.getElementById('submit').addEventListener('click', submit);
@@ -765,6 +1003,9 @@ window.MinerUSourceViewer = SourceViewer;
       document.querySelectorAll('.demo-chip').forEach(function (chip) {
         chip.classList.remove('selected');
       });
+      setPageCount(0);
+      document.getElementById('progress').hidden = true;
+      stopProgress();
       resetViews();
     });
     document.getElementById('download-toggle').addEventListener('click', function (event) {

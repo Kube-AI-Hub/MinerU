@@ -62,15 +62,46 @@
                 </select>
               </label>
 
-              <label class="field">
-                <span data-i18n="pageRange">页码范围</span>
-                <input type="text" id="page-range" placeholder="all" />
-                <span class="muted" data-i18n="pageRangeHint">留空或 all 表示全部页面。</span>
+              <!-- 强制 OCR：与原版 WebUI 的复选框一致，勾选即把 OCR 模式锁到 ocr -->
+              <label class="checkbox-field">
+                <input type="checkbox" id="force-ocr" />
+                <span class="checkbox-text">
+                  <span data-i18n="forceOcr">强制 OCR</span>
+                  <span class="muted" data-i18n="forceOcrHint">忽略 PDF 文本层并进行 OCR</span>
+                </span>
               </label>
+
+              <!-- 页码范围：与原版 WebUI 一致，用两个滑块选起止页 -->
+              <div class="field page-range-field">
+                <span data-i18n="pageRange">页码范围</span>
+                <div class="page-range">
+                  <div class="page-range-head">
+                    <span id="page-summary" class="muted">—</span>
+                  </div>
+                  <div class="page-sliders">
+                    <label class="page-slider">
+                      <span class="muted" data-i18n="startPage">起始页</span>
+                      <input type="range" id="page-start" min="1" max="1" value="1" step="1" disabled />
+                      <output id="page-start-value">1</output>
+                    </label>
+                    <label class="page-slider">
+                      <span class="muted" data-i18n="endPage">结束页</span>
+                      <input type="range" id="page-end" min="1" max="1" value="1" step="1" disabled />
+                      <output id="page-end-value">1</output>
+                    </label>
+                  </div>
+                </div>
+              </div>
 
               <div class="actions">
                 <button class="primary" id="submit" data-i18n="parse">开始解析</button>
                 <button class="ghost" id="clear" data-i18n="clear">清除</button>
+              </div>
+              <!-- 解析进度：与原版 WebUI 一致，逐步列出阶段并计时，便于排查卡在哪一步 -->
+              <div class="progress" id="progress" hidden>
+                <div class="progress-title" data-i18n="progressTitle">最新状态</div>
+                <ul class="progress-steps" id="progress-steps"></ul>
+                <div class="progress-elapsed" id="progress-elapsed"></div>
               </div>
               <p class="status" id="status"></p>
             </div>
