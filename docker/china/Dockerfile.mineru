@@ -7,14 +7,17 @@
 # a user picks per deployment.
 #
 # Built from the repository root:
-#   docker build -f docker/china/Dockerfile.mineru -t mineru:4.0.12-cu129 .
+#   docker build -f docker/china/Dockerfile.mineru -t mineru:4.0.12-cu130 .
 #
 # The vLLM base image is reused so the VLM weights can be served by the
 # inference engine MinerU already drives locally, and so torch arrives
 # CUDA-matched instead of being reinstalled from PyPI.
-
-ARG VLLM_IMAGE=docker.m.daocloud.io/vllm/vllm-openai:v0.21.0-cu129
+ARG VLLM_IMAGE=watering-ai-registry.cn-shanghai.cr.aliyuncs.com/kube-ai-hub/vllm/vllm-openai:v0.30.0
 FROM ${VLLM_IMAGE}
+
+# Which PyPI index to install from. Overridable because a build host may not
+# reach every mirror; the default matches the other China Dockerfiles here.
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
 
 # libgl and libglib are needed by opencv, which MinerU uses for image handling.
 RUN apt-get update && \
@@ -26,15 +29,22 @@ RUN apt-get update && \
 
 # Installed from this source tree rather than from PyPI: `mineru-kit serve` and
 # its playground live in this repository, so the image has to carry the same
-# code that is being deployed. Torch is already in the base image and satisfies
-# the [torch] extra, so pip leaves the CUDA-matched build alone.
+# code that is being deployed.
+#
+# Torch is already in the base image, so it is installed separately first and
+# pinned to what is present: `.[torch]` allows `torch>=2.7,<3`, and without the
+# constraint pip happily installs a second, CUDA-mismatched torch on top of the
+# one the base image matched to its driver.
 WORKDIR /opt/mineru
 COPY pyproject.toml README.md README_zh-CN.md ./
 COPY mineru ./mineru
 RUN python3 -m pip install --no-cache-dir --break-system-packages \
-        -i https://mirrors.aliyun.com/pypi/simple \
+        -i "${PIP_INDEX_URL}" \
         '.[torch]' && \
     python3 -m pip cache purge
+
+# The base image already ships a matching vLLM, so MinerU must not pull its own.
+RUN python3 -c "import torch, vllm; print('torch', torch.__version__, 'cuda', torch.version.cuda, 'vllm', vllm.__version__)"
 
 # Bake the small model bundle only. Naming the repo explicitly keeps the VLM
 # weights out: `--tier standard` would also download MinerU2.5-Pro-2605-1.2B,

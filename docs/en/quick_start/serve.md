@@ -95,11 +95,11 @@ Static assets carry `Cache-Control: no-cache`. They change with the engine image
 The image bakes only the small model bundle; the VLM weights are left to the platform mount:
 
 ```bash
-docker build -t mineru:4.0.12-cu129 -f docker/china/Dockerfile.mineru .
+docker build -t mineru:4.0.12-cu130 -f docker/china/Dockerfile.mineru .
 docker run --gpus all --shm-size 32g --ipc=host \
   -p 8000:8000 \
   -v /path/to/weights:/mnt/models/model:ro \
-  mineru:4.0.12-cu129
+  mineru:4.0.12-cu130
 ```
 
 Its entrypoint is exactly `mineru-kit serve --host 0.0.0.0 --port 8000 --tier standard`, with `MINERU_MODEL_DIR=/mnt/models/model` already set.

@@ -50,15 +50,19 @@
 
   /* The parse API returns the Markdown among the task artifacts. Output shapes
      differ per response format, so read the documented fields rather than
-     assuming one layout. */
+     assuming one layout: a file carries its text under `content.markdown`, and
+     other response formats put it directly on the file. */
   function extractMarkdown(payload) {
     if (!payload) return '';
     if (typeof payload.markdown === 'string') return payload.markdown;
     var files = payload.files || payload.results || [];
     for (var i = 0; i < files.length; i += 1) {
       var entry = files[i];
-      if (entry && typeof entry.markdown === 'string') return entry.markdown;
-      if (entry && typeof entry.content === 'string') return entry.content;
+      if (!entry) continue;
+      if (typeof entry.markdown === 'string') return entry.markdown;
+      var content = entry.content;
+      if (typeof content === 'string') return content;
+      if (content && typeof content.markdown === 'string') return content.markdown;
     }
     if (payload.data) return extractMarkdown(payload.data);
     return '';
@@ -83,6 +87,16 @@
 
   function isFailure(payload) {
     return !!payload && (payload.status === 'failed' || payload.status === 'error');
+  }
+
+  /* A completed task can still contain a per-file failure, so the caller needs
+     to know whether the response actually carried usable content. */
+  function hasFailedFile(payload) {
+    var files = (payload && payload.files) || [];
+    for (var i = 0; i < files.length; i += 1) {
+      if (files[i] && files[i].status === 'failed') return true;
+    }
+    return false;
   }
 
   function demoButton(name) {
@@ -186,7 +200,7 @@
       })
       .then(function (result) {
         var markdown = extractMarkdown(result.payload);
-        if (!result.ok || isFailure(result.payload) || !markdown) {
+        if (!result.ok || isFailure(result.payload) || hasFailedFile(result.payload) || !markdown) {
           var detail = extractError(result.payload);
           setStatus(t('failed', { message: detail || 'HTTP ' + result.status }), 'error');
           return;

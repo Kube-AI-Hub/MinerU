@@ -288,6 +288,31 @@ class TestPackaging:
         assert "lang" in source
 
 
+class TestResponseParsing:
+    """The playground reads the parse API's response shape directly.
+
+    A wrong guess here is silent: the request succeeds and the result pane stays
+    empty, which reads as "the engine is broken". The shapes below are the ones
+    the API actually returns.
+    """
+
+    @pytest.fixture()
+    def script(self):
+        return (serve_app.ASSETS_DIR / "app.js").read_text(encoding="utf-8")
+
+    def test_reads_markdown_from_a_files_content(self, script):
+        """A synchronous parse puts the text at files[].content.markdown."""
+        assert "content.markdown" in script
+
+    def test_reads_a_per_file_failure(self, script):
+        """A completed task can still carry a failed file."""
+        assert "status === 'failed'" in script
+
+    def test_reports_the_nested_error_message(self, script):
+        """The reason lives at files[].error.message, not at the top level."""
+        assert "error.message" in script
+
+
 def test_health_payload_is_json_serialisable(tmp_path, model_home):
     """The probe body must not depend on non-serialisable values."""
     source = _write_weights(tmp_path / "mounted")

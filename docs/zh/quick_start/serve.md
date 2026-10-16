@@ -95,11 +95,11 @@ mineru-kit models download MinerU-4_models_torch -s modelscope
 镜像只烧入小模型包，VLM 权重留给平台挂载：
 
 ```bash
-docker build -t mineru:4.0.12-cu129 -f docker/china/Dockerfile.mineru .
+docker build -t mineru:4.0.12-cu130 -f docker/china/Dockerfile.mineru .
 docker run --gpus all --shm-size 32g --ipc=host \
   -p 8000:8000 \
   -v /path/to/weights:/mnt/models/model:ro \
-  mineru:4.0.12-cu129
+  mineru:4.0.12-cu130
 ```
 
 镜像的入口就是 `mineru-kit serve --host 0.0.0.0 --port 8000 --tier standard`，并设好 `MINERU_MODEL_DIR=/mnt/models/model`。
