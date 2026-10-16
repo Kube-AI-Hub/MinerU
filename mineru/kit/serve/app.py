@@ -161,8 +161,23 @@ def create_serving_app(
         # The platform's probe cannot carry an Authorization header, so the
         # serving health route stays reachable when an API key is configured.
         # The playground's own routes are public for the same reason: the page
-        # and its assets load before the user opts into sending a token.
-        public_paths=("/health", CONFIG_PATH, RENDER_PATH, DOWNLOAD_PATH),
+        # and its assets load before the user opts into sending a token, and a
+        # 401 on `/` would leave the user with nothing to opt in from.
+        public_paths=(
+            "/health",
+            "/",
+            CONFIG_PATH,
+            RENDER_PATH,
+            DOWNLOAD_PATH,
+            "/index.html",
+            "/index.css",
+            "/app.mjs",
+            "/i18n.js",
+            "/source-viewer.mjs",
+            "/rapidoc-min-9.3.8.js",
+            "/vendor",
+            "/demo",
+        ),
         **kwargs,  # type: ignore[arg-type]
     )
 

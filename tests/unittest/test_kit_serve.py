@@ -529,6 +529,44 @@ class TestServingApp:
             response = test_client.post(serve_app.RENDER_PATH, json={"middle_json": {}})
             assert response.status_code != 401
 
+    def test_playground_page_stays_reachable_when_an_api_key_is_configured(self, tmp_path, model_home):
+        """The page and its assets must load before any token can be sent.
+
+        With `--api-key` the page itself was gated: the user got a bare 401
+        instead of the Playground, so there was nothing to opt into sending a
+        token from. Everything the first paint needs stays public; the parse API
+        does not.
+        """
+        source = _write_weights(tmp_path / "mounted")
+        from fastapi.testclient import TestClient
+
+        application = serve_app.create_serving_app(
+            tier="standard", model_dir=str(source), api_key="secret"
+        )
+        with TestClient(application) as test_client:
+            for path in (
+                "/",
+                "/index.css",
+                "/app.mjs",
+                "/i18n.js",
+                "/source-viewer.mjs",
+                "/rapidoc-min-9.3.8.js",
+                serve_app.CONFIG_PATH,
+                serve_app.RENDER_PATH,
+                serve_app.DOWNLOAD_PATH,
+            ):
+                # POST routes reject a GET with 405; anything but 401 proves the
+                # auth middleware let it through.
+                response = test_client.get(path)
+                assert response.status_code != 401, path
+
+            for demo in serve_app.DEMO_FILES:
+                assert test_client.get(f"/demo/{demo}").status_code == 200, demo
+
+            # The parse API is the thing the token protects, so it must still be
+            # gated.
+            assert test_client.get("/v1/jobs").status_code == 401
+
     def test_health_stays_reachable_when_an_api_key_is_configured(self, tmp_path, model_home):
         """The platform's probe cannot send an Authorization header."""
         source = _write_weights(tmp_path / "mounted")
