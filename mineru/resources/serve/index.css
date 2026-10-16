@@ -36,7 +36,7 @@ body {
 }
 
 .layout {
-  max-width: 1280px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 24px 20px 40px;
 }
@@ -111,14 +111,42 @@ body {
   display: block;
 }
 
-.grid {
+/* Three columns: parameters, source preview, parsed result. The preview pair
+   sits side by side so a user can compare them without scrolling between.
+
+   The platform embeds this page in an iframe roughly 1024px wide, which is too
+   narrow for three columns. So the middle tier moves the controls above and
+   keeps source and result side by side: the comparison is the point of the
+   page, and losing it to a breakpoint would defeat the layout. */
+.workspace {
   display: grid;
-  grid-template-columns: minmax(280px, 380px) 1fr;
-  gap: 20px;
+  grid-template-columns: minmax(260px, 320px) minmax(280px, 1fr) minmax(320px, 1.2fr);
+  gap: 16px;
+  align-items: start;
 }
 
-@media (max-width: 1024px) {
-  .grid {
+@media (max-width: 1400px) {
+  .workspace {
+    grid-template-columns: 1fr 1fr;
+  }
+  .controls {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px 16px;
+    align-items: end;
+  }
+  .controls .actions,
+  .controls .status {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .controls {
     grid-template-columns: 1fr;
   }
 }
@@ -126,8 +154,18 @@ body {
 .pane {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
+}
+
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  font-weight: 500;
+  color: var(--gray-800);
 }
 
 .field {
@@ -140,18 +178,6 @@ body {
 
 .field > span:first-child {
   font-weight: 500;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-@media (max-width: 640px) {
-  .row {
-    grid-template-columns: 1fr;
-  }
 }
 
 input[type="text"],
@@ -180,6 +206,12 @@ select:focus {
 .muted {
   color: var(--gray-500);
   font-size: 12px;
+}
+
+.placeholder {
+  margin: 0;
+  padding: 24px 12px;
+  text-align: center;
 }
 
 .demos {
@@ -220,7 +252,112 @@ select:focus {
   color: var(--brand-600);
 }
 
+/* Tier slider. The label above it carries the tier name and its notice so the
+   value is readable while dragging, not only after release. */
+.tier-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tier-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tier-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-600);
+}
+
+.tier-notice {
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.tier-slider {
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.tier-slider:focus {
+  outline: none;
+}
+
+.tier-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gray-300);
+}
+
+.tier-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gray-300);
+}
+
+.tier-slider::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border: 2px solid var(--gray-50);
+  border-radius: 50%;
+  background: var(--brand-600);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.tier-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--gray-50);
+  border-radius: 50%;
+  background: var(--brand-600);
+}
+
+.tier-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--brand-300);
+  outline-offset: 2px;
+}
+
+.tier-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.tier-tick {
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.tier-tick:hover {
+  color: var(--gray-700);
+}
+
+.tier-tick.active {
+  color: var(--brand-600);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
 button.primary {
+  flex: 1;
   padding: 10px 18px;
   border: none;
   border-radius: var(--radius-sm);
@@ -241,7 +378,7 @@ button.primary:disabled {
 }
 
 button.ghost {
-  padding: 5px 12px;
+  padding: 8px 14px;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-sm);
   background: transparent;
@@ -275,66 +412,281 @@ button.ghost:disabled {
   color: #75e0a7;
 }
 
-.result-pane {
-  border-left: 1px solid var(--gray-200);
-  padding-left: 20px;
+/* Source preview and result share a height so the comparison is side by side
+   rather than a scroll hunt. */
+.source-body,
+.result {
+  height: 620px;
+  overflow: auto;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--gray-25);
 }
 
-@media (max-width: 1024px) {
-  .result-pane {
-    border-left: none;
-    border-top: 1px solid var(--gray-200);
-    padding-left: 0;
-    padding-top: 16px;
-  }
+.source-body {
+  display: flex;
+  flex-direction: column;
 }
 
-.result-head {
+.source-body > .placeholder {
+  margin: auto;
+}
+
+.source-frame,
+.source-image {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: none;
+  background: #fff;
+}
+
+.source-image {
+  object-fit: contain;
+}
+
+.source-text {
+  margin: 0;
+  padding: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--gray-700);
+}
+
+.result-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.rtab {
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--gray-600);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rtab:hover {
+  color: var(--gray-800);
+}
+
+.rtab.active {
+  border-color: var(--gray-300);
+  background: var(--gray-100);
+  color: var(--brand-600);
+}
+
+.download {
+  position: relative;
+}
+
+.download-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+  box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.45);
+}
+
+.download-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-weight: 500;
-  color: var(--gray-800);
-}
-
-.result-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.result {
-  flex: 1;
-  min-height: 320px;
-  max-height: 620px;
-  overflow: auto;
-  padding: 16px;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-  background: var(--gray-25);
-}
-
-.result pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--gray-800);
-}
-
-.swagger {
-  min-height: 560px;
-}
-
-.swagger-frame {
   width: 100%;
-  min-height: 560px;
-  height: 72vh;
-  border: 1px solid var(--gray-200);
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-800);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.download-item:hover:not(:disabled) {
+  background: var(--gray-200);
+}
+
+.download-item:disabled {
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+.download-item .hint {
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
+/* Rendered Markdown. Scoped to the result pane so the page's own chrome keeps
+   the playground's typography. */
+.result .markdown-body {
+  padding: 16px 18px;
+  color: var(--gray-800);
+  font-size: 14px;
+  line-height: 1.75;
+  word-break: break-word;
+}
+
+.result .markdown-body h1,
+.result .markdown-body h2,
+.result .markdown-body h3,
+.result .markdown-body h4,
+.result .markdown-body h5,
+.result .markdown-body h6 {
+  margin: 1.2em 0 0.5em;
+  color: var(--gray-900);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.result .markdown-body h1 {
+  font-size: 22px;
+}
+
+.result .markdown-body h2 {
+  font-size: 19px;
+}
+
+.result .markdown-body h3 {
+  font-size: 16px;
+}
+
+.result .markdown-body h4,
+.result .markdown-body h5,
+.result .markdown-body h6 {
+  font-size: 14px;
+}
+
+.result .markdown-body p,
+.result .markdown-body ul,
+.result .markdown-body ol,
+.result .markdown-body blockquote,
+.result .markdown-body table,
+.result .markdown-body pre {
+  margin: 0 0 0.85em;
+}
+
+.result .markdown-body ul,
+.result .markdown-body ol {
+  padding-left: 1.5em;
+}
+
+.result .markdown-body li {
+  margin: 0.25em 0;
+}
+
+.result .markdown-body a {
+  color: var(--brand-600);
+}
+
+.result .markdown-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.result .markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.result .markdown-body th,
+.result .markdown-body td {
+  padding: 7px 10px;
+  border: 1px solid var(--gray-300);
+  text-align: left;
+}
+
+.result .markdown-body th {
+  background: var(--gray-100);
+  color: var(--gray-900);
+  font-weight: 600;
+}
+
+.result .markdown-body blockquote {
+  padding: 4px 14px;
+  border-left: 3px solid var(--brand-300);
+  color: var(--gray-600);
+}
+
+.result .markdown-body code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--gray-100);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+
+.result .markdown-body pre {
+  padding: 12px 14px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--gray-100);
+}
+
+.result .markdown-body pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.result .markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--gray-300);
+  margin: 1.2em 0;
+}
+
+/* JSON preview. A plain <pre> with the platform palette; collapsing every node
+   would add a dependency for little gain, so indentation carries the structure. */
+.json-view {
+  margin: 0;
+  padding: 16px 18px;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--gray-800);
+  tab-size: 2;
+}
+
+.json-key {
+  color: var(--brand-600);
+}
+
+.json-string {
+  color: #75e0a7;
+}
+
+.json-number {
+  color: #f0b775;
+}
+
+.json-boolean {
+  color: #7fb3f0;
+}
+
+.json-null {
+  color: var(--gray-500);
+}
+
+/* API tab. RapiDoc sizes itself, so give it the same block height as the
+   preview panes to keep the page from jumping between tabs. */
+rapi-doc {
+  display: block;
+  height: 720px;
   border-radius: var(--radius-sm);
-  background: var(--gray-25);
+  overflow: hidden;
 }
 
 .footer {

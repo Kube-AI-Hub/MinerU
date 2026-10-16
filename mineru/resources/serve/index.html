@@ -30,8 +30,9 @@
         </div>
 
         <section class="section active" id="section-test">
-          <div class="grid">
-            <div class="pane">
+          <div class="workspace">
+            <!-- 左：参数 -->
+            <div class="pane controls">
               <label class="field">
                 <span data-i18n="file">文档</span>
                 <input type="file" id="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tif,.tiff" />
@@ -42,25 +43,24 @@
                 <div class="demos-list" id="demos-list"></div>
               </div>
 
-              <div class="row">
-                <label class="field">
-                  <span data-i18n="tier">解析档位</span>
-                  <select id="tier">
-                    <option value="flash" data-i18n="tierFlash">flash · 快速预览</option>
-                    <option value="basic" data-i18n="tierBasic">basic · 基础 OCR</option>
-                    <option value="standard" selected data-i18n="tierStandard">standard · 复杂版面</option>
-                    <option value="advanced" data-i18n="tierAdvanced">advanced · 更高质量</option>
-                  </select>
-                </label>
-                <label class="field">
-                  <span data-i18n="ocrMode">OCR 模式</span>
-                  <select id="ocr-mode">
-                    <option value="auto" selected>auto</option>
-                    <option value="txt">txt</option>
-                    <option value="ocr">ocr</option>
-                  </select>
-                </label>
+              <div class="tier-block">
+                <div class="tier-head">
+                  <span class="tier-name" id="tier-name">standard</span>
+                  <span class="tier-notice" id="tier-notice"></span>
+                </div>
+                <input type="range" id="tier" min="0" max="3" step="1" value="2" class="tier-slider" />
+                <div class="tier-ticks" id="tier-ticks"></div>
+                <p class="muted" id="tier-desc"></p>
               </div>
+
+              <label class="field">
+                <span data-i18n="ocrMode">OCR 模式</span>
+                <select id="ocr-mode">
+                  <option value="auto" selected>auto</option>
+                  <option value="txt">txt</option>
+                  <option value="ocr">ocr</option>
+                </select>
+              </label>
 
               <label class="field">
                 <span data-i18n="pageRange">页码范围</span>
@@ -68,27 +68,66 @@
                 <span class="muted" data-i18n="pageRangeHint">留空或 all 表示全部页面。</span>
               </label>
 
-              <button class="primary" id="submit" data-i18n="parse">开始解析</button>
+              <div class="actions">
+                <button class="primary" id="submit" data-i18n="parse">开始解析</button>
+                <button class="ghost" id="clear" data-i18n="clear">清除</button>
+              </div>
               <p class="status" id="status"></p>
             </div>
 
+            <!-- 中：源文件预览 -->
+            <div class="pane source-pane">
+              <div class="pane-head">
+                <span data-i18n="sourcePreview">源文档预览</span>
+                <span class="muted" id="source-meta"></span>
+              </div>
+              <div class="source-body" id="source-body">
+                <p class="muted placeholder" data-i18n="sourceEmpty">选择文件后，这里显示源文档。</p>
+              </div>
+            </div>
+
+            <!-- 右：解析结果 -->
             <div class="pane result-pane">
-              <div class="result-head">
-                <span data-i18n="result">解析结果</span>
-                <div class="result-actions">
-                  <button class="ghost" id="copy" data-i18n="copy" disabled>复制</button>
-                  <button class="ghost" id="download" data-i18n="download" disabled>下载 Markdown</button>
+              <div class="pane-head">
+                <div class="result-tabs" id="result-tabs">
+                  <button class="rtab active" data-view="markdown" data-i18n="viewMarkdown">Markdown</button>
+                  <button class="rtab" data-view="json" data-i18n="viewJson">JSON</button>
+                </div>
+                <div class="download">
+                  <button class="ghost" id="download-toggle" data-i18n="download">下载</button>
+                  <div class="download-menu" id="download-menu" hidden></div>
                 </div>
               </div>
               <div class="result" id="result">
-                <p class="muted" data-i18n="resultEmpty">解析完成后，Markdown 会显示在这里。</p>
+                <p class="muted placeholder" data-i18n="resultEmpty">解析完成后，结果会显示在这里。</p>
               </div>
             </div>
           </div>
         </section>
 
         <section class="section" id="section-api">
-          <div id="swagger" class="swagger"></div>
+          <rapi-doc
+            id="rapidoc"
+            render-style="read"
+            theme="dark"
+            bg-color="#14215a"
+            text-color="#deebf6"
+            header-color="#1f2c6a"
+            primary-color="#a981f8"
+            load-fonts="false"
+            regular-font="Inter, PingFang SC, Microsoft YaHei, system-ui, sans-serif"
+            mono-font="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+            show-header="false"
+            layout="row"
+            show-info="true"
+            allow-try="true"
+            allow-authentication="true"
+            allow-spec-url-load="false"
+            allow-spec-file-load="false"
+            allow-server-selection="false"
+            allow-api-list-style-selection="false"
+            heading-text="MinerU API"
+          ></rapi-doc>
         </section>
       </div>
 
@@ -96,5 +135,7 @@
         <span id="version"></span>
       </footer>
     </div>
+
+    <script src="./rapidoc-min-9.3.8.js"></script>
   </body>
 </html>

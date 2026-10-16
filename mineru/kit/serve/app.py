@@ -42,7 +42,11 @@ ASSETS_DIR = Path(__file__).resolve().parents[2] / "resources" / "serve"
 #: Playground configuration endpoint, relative to whatever prefix is proxied.
 CONFIG_PATH = "/config"
 
-#: Bundled documents the playground offers so a first run needs no file.
+#: Renders a parse result to HTML for the result pane, using the same renderer
+#: as the WebUI so both show the document the same way.
+RENDER_PATH = "/render"
+
+#: Bundled demo documents the playground offers so a first run needs no file.
 DEMO_FILES = ("demo1.pdf", "demo2.pdf")
 
 #: The readiness check follows the bridge, so it reports the location the
@@ -87,7 +91,9 @@ def create_serving_app(
         preload_models=preload_models,
         # The platform's probe cannot carry an Authorization header, so the
         # serving health route stays reachable when an API key is configured.
-        public_paths=("/health", CONFIG_PATH),
+        # The playground's own routes are public for the same reason: the page
+        # and its assets load before the user opts into sending a token.
+        public_paths=("/health", CONFIG_PATH, RENDER_PATH),
         **kwargs,  # type: ignore[arg-type]
     )
 
@@ -135,6 +141,52 @@ def create_serving_app(
             }
         )
 
+    @application.post(RENDER_PATH, include_in_schema=False)
+    async def render_preview(request: Request) -> JSONResponse:
+        """Render a parse result to the HTML the result pane shows.
+
+        The playground asks for this instead of converting Markdown in the
+        browser so the preview goes through the same renderer the WebUI uses:
+        tables, formulas and image placement then look the same in both, and
+        the page carries no second Markdown implementation to keep in sync.
+
+        Body: ``{"middle_json": <the parse result's middle_json>}``.
+        """
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "body must be JSON"}, status_code=400)
+
+        middle_json = body.get("middle_json") if isinstance(body, dict) else None
+        if not isinstance(middle_json, dict):
+            return JSONResponse({"error": "middle_json is required"}, status_code=400)
+
+        try:
+            from ...parser.base import ParseResult
+            from ...render import HtmlRenderOptions, RenderFormat, render
+
+            # The parse result's middle_json is a plain dict, while the renderer
+            # takes the typed wrapper the WebUI also uses. Going through
+            # ParseResult keeps both on one path instead of hand-building the
+            # structure the renderer expects.
+            result = ParseResult.from_dict(middle_json)
+            html = render(
+                result.middle_json,
+                RenderFormat.HTML,
+                options=HtmlRenderOptions(
+                    # The page supplies its own chrome and styles the fragment,
+                    # and the images are swapped for the archive's blobs there,
+                    # so a standalone document would only duplicate both.
+                    standalone=False,
+                    asset_base_url="",
+                ),
+            )
+        except Exception as exc:  # noqa: BLE001 - reported to the page
+            logger.warning("Preview rendering failed: %s", exc)
+            return JSONResponse({"error": str(exc)}, status_code=422)
+
+        return JSONResponse({"html": html})
+
     @application.get("/", include_in_schema=False)
     async def playground() -> FileResponse:
         """Serve the playground page."""
@@ -173,6 +225,7 @@ __all__ = [
     "ASSETS_DIR",
     "CONFIG_PATH",
     "DEMO_FILES",
+    "RENDER_PATH",
     "create_serving_app",
     "demo_documents",
 ]

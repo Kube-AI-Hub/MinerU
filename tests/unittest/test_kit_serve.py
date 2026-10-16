@@ -237,6 +237,44 @@ class TestServingApp:
         assert "url: './openapi.json'" in markup
         assert 'href="/docs/' not in markup
 
+    def test_render_endpoint_renders_a_parse_result(self, client):
+        """The result pane gets its HTML from the engine, not from the browser.
+
+        The fixture is a real one-page middle_json produced by this engine, so
+        the test also pins the schema the renderer expects.
+        """
+        fixture = Path(__file__).resolve().parents[1] / "fixtures" / "middle_small.json"
+        middle_json = json.loads(fixture.read_text(encoding="utf-8"))
+
+        response = client.post(serve_app.RENDER_PATH, json={"middle_json": middle_json})
+
+        assert response.status_code == 200, response.text
+        html = response.json()["html"]
+        assert "<" in html
+        assert "flow duration curves" in html.lower()
+
+    def test_render_endpoint_rejects_a_missing_body(self, client):
+        assert client.post(serve_app.RENDER_PATH, json={}).status_code == 400
+
+    def test_render_endpoint_reports_a_schema_mismatch(self, client):
+        """A body that is not a parse result fails loudly instead of rendering blank."""
+        response = client.post(serve_app.RENDER_PATH, json={"middle_json": {"pages": []}})
+
+        assert response.status_code == 422
+        assert "error" in response.json()
+
+    def test_render_stays_reachable_when_an_api_key_is_configured(self, tmp_path, model_home):
+        """The page loads its preview before the user opts into sending a token."""
+        source = _write_weights(tmp_path / "mounted")
+        from fastapi.testclient import TestClient
+
+        application = serve_app.create_serving_app(
+            tier="standard", model_dir=str(source), api_key="secret"
+        )
+        with TestClient(application) as test_client:
+            response = test_client.post(serve_app.RENDER_PATH, json={"middle_json": {}})
+            assert response.status_code != 401
+
     def test_health_stays_reachable_when_an_api_key_is_configured(self, tmp_path, model_home):
         """The platform's probe cannot send an Authorization header."""
         source = _write_weights(tmp_path / "mounted")
@@ -289,7 +327,7 @@ class TestPackaging:
 
 
 class TestResponseParsing:
-    """The playground reads the parse API's response shape directly.
+    """The playground reads the parse API's response directly.
 
     A wrong guess here is silent: the request succeeds and the result pane stays
     empty, which reads as "the engine is broken". The shapes below are the ones
@@ -300,17 +338,39 @@ class TestResponseParsing:
     def script(self):
         return (serve_app.ASSETS_DIR / "app.js").read_text(encoding="utf-8")
 
-    def test_reads_markdown_from_a_files_content(self, script):
-        """A synchronous parse puts the text at files[].content.markdown."""
-        assert "content.markdown" in script
+    def test_reads_the_markdown_from_the_archive(self, script):
+        """The zip response carries the Markdown as markdown.md."""
+        assert "markdown.md" in script
 
-    def test_reads_a_per_file_failure(self, script):
-        """A completed task can still carry a failed file."""
-        assert "status === 'failed'" in script
+    def test_reads_the_structured_json_from_the_archive(self, script):
+        """The JSON pane and the preview both need middle_json.json."""
+        assert "middle_json.json" in script
+
+    def test_asks_for_every_format_the_preview_needs(self, script):
+        """One request must carry what the preview and the menu need."""
+        assert "'middle_json'" in script
+        assert "'structured_content'" in script
+
+    def test_marks_the_formats_that_need_an_api_key(self, script):
+        """html/latex/docx are refused without a key, so the menu disables them."""
+        assert "needsKey" in script
 
     def test_reports_the_nested_error_message(self, script):
         """The reason lives at files[].error.message, not at the top level."""
         assert "error.message" in script
+
+    def test_renders_the_preview_through_the_engine(self, script):
+        """Using the engine's renderer keeps the preview identical to the WebUI."""
+        assert "./render" in script
+
+    def test_uses_relative_paths_only(self, script):
+        """Absolute paths would escape a proxy that strips its own prefix."""
+        for line in script.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("//") or stripped.startswith("*"):
+                continue
+            assert "'/v1" not in stripped, stripped
+            assert '"/v1' not in stripped, stripped
 
 
 def test_health_payload_is_json_serialisable(tmp_path, model_home):
