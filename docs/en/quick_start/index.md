@@ -81,6 +81,8 @@ mineru-kit api-server --host 127.0.0.1 --port 8000 --tier standard
 
 Inspect the running service through its [OpenAPI documentation](http://127.0.0.1:8000/docs).
 
+To serve the parse API, the OpenAPI documentation and the Playground on a single port — for example when hosting on a model platform — use `mineru-kit serve`; see [single-port serving](serve.md).
+
 ## Install from source
 
 Run from a repository checkout containing the 4.0 source:

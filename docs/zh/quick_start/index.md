@@ -81,6 +81,8 @@ mineru-kit api-server --host 127.0.0.1 --port 8000 --tier standard
 
 在 [OpenAPI 文档](http://127.0.0.1:8000/docs)查看当前服务接口。
 
+需要把解析 API、OpenAPI 文档与 Playground 收在同一个端口上（例如托管到模型平台），用 `mineru-kit serve`，见[单端口服务](serve.md)。
+
 ## 源码安装
 
 在包含 4.0 源码的仓库根目录执行：

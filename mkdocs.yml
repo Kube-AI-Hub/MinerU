@@ -81,6 +81,7 @@ nav:
       - Quick Start: quick_start/index.md
       - Extension Modules: quick_start/extension_modules.md
       - Docker Deployment: quick_start/docker_deployment.md
+      - Single-port Serving: quick_start/serve.md
     - Usage:
       - Usage: usage/index.md
       - Quick Usage: usage/quick_usage.md
@@ -104,6 +105,7 @@ nav:
     - Quick Start: quick_start/index.md
     - Extension Modules: quick_start/extension_modules.md
     - Docker Deployment: quick_start/docker_deployment.md
+    - Single-port Serving: quick_start/serve.md
   - Usage:
     - Usage: usage/index.md
     - Quick Usage: usage/quick_usage.md
