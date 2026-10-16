@@ -11,9 +11,9 @@ import zipfile
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, NoReturn, Protocol
+from typing import Annotated, Any, Literal, NoReturn, Protocol
 
-from fastapi import APIRouter, Query, Request, Response
+from fastapi import APIRouter, Path as PathParam, Query, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.datastructures import UploadFile
@@ -33,7 +33,7 @@ from .api_server import (
     _raise_api_error,
     submit_parse_job,
 )
-from .page_range import normalize_page_range_input
+from .page_range import PAGE_RANGE_DESCRIPTION, normalize_page_range_input
 
 MAX_TASK_FILE_BYTES = 200 * 1024 * 1024
 MAX_TASK_FILES = 100
@@ -87,33 +87,62 @@ class TaskBackend(Protocol):
 class TaskStatusResponse(JobAsyncResponse):
     """沿用 Job 字段，序列化为 task_id 并增加 V1 查询地址。"""
 
-    job_id: str = Field(alias="task_id")
-    status_url: str
-    result_url: str
+    job_id: str = Field(alias="task_id", description="Task ID, used to poll, cancel and fetch results.")
+    status_url: str = Field(description="URL to poll this task's status.")
+    result_url: str = Field(description="URL to fetch the task's result; pass response_format to choose the shape.")
 
 
 class TaskFileContent(JobFileResult):
     """内联文本产物，同时保留既有文件状态、错误和资源引用。"""
 
-    content: dict[str, Any] = Field(default_factory=dict)
+    content: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Inline artifacts keyed by format (markdown, middle_json, structured_content); empty until completed.",
+    )
 
 
 class TaskResultResponse(TaskStatusResponse):
     """描述可直接消费的 JSON 解析结果。"""
 
-    files: list[TaskFileContent]
+    files: list[TaskFileContent] = Field(description="One entry per submitted document, with inline content.")
 
 
 class UploadTaskOptions(BaseModel):
     """上传解析参数仅来自查询串，保证哈希命中时无需读取表单。"""
 
     model_config = ConfigDict(extra="forbid")
-    tier: Literal["flash", "basic", "standard", "advanced"] | None = None
-    ocr_mode: Literal["auto", "txt", "ocr"] = "auto"
-    page_range: str = ""
-    output_formats: list[str] = Field(default_factory=lambda: ["markdown"])
-    filename: str | None = Field(default=None, min_length=1)
-    sha256sum: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    tier: Literal["flash", "basic", "standard", "advanced"] | None = Field(
+        default=None,
+        description="Quality tier: flash, basic, standard or advanced. Omit to use the server's default.",
+        examples=["standard"],
+    )
+    ocr_mode: Literal["auto", "txt", "ocr"] = Field(
+        default="auto",
+        description="OCR mode: auto-detect, native text only, or forced OCR.",
+        examples=["auto"],
+    )
+    page_range: str = Field(
+        default="",
+        description=PAGE_RANGE_DESCRIPTION,
+        examples=["1-5,8,r3-r1", "all"],
+    )
+    output_formats: list[str] = Field(
+        default_factory=lambda: ["markdown"],
+        description="Artifacts to produce: markdown, middle_json, structured_content, zip.",
+        examples=[["markdown", "structured_content"]],
+    )
+    filename: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Raw uploads only: file name, whose suffix selects the parser.",
+        examples=["document.pdf"],
+    )
+    sha256sum: str | None = Field(
+        default=None,
+        pattern=r"^[a-f0-9]{64}$",
+        description="Raw uploads only: lowercase hex SHA-256, so identical bytes can be reused.",
+        examples=["9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"],
+    )
 
 
 def _invalid(message: str, *, code: str = "invalid_request", status_code: int = 400, param: str | None = None) -> NoReturn:
@@ -340,6 +369,11 @@ def _request_schema() -> dict[str, Any]:
     return {
         "requestBody": {
             "required": True,
+            "description": (
+                "The document to parse. Send one of: multipart/form-data with `files` fields, "
+                "application/octet-stream for a single raw file (with query parameters), or "
+                "application/json with a CreateJobRequest body."
+            ),
             "content": {
                 # multipart first on purpose: RapiDoc (and most viewers) default
                 # to the first declared media type, and the only way a human
@@ -355,16 +389,26 @@ def _request_schema() -> dict[str, Any]:
                                 "type": "array",
                                 "maxItems": MAX_TASK_FILES,
                                 "items": {"type": "string", "format": "binary"},
+                                "description": "One or more documents to parse, in order.",
                             }
                         },
                     }
                 },
                 "application/json": {"schema": expand(schema)},
-                "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+                "application/octet-stream": {
+                    "schema": {"type": "string", "format": "binary"},
+                    "description": "Raw file bytes; `filename` is required as a query parameter.",
+                },
             },
         },
         "parameters": [
-            {"name": name, "in": "query", "required": False, "schema": value}
+            {
+                "name": name,
+                "in": "query",
+                "required": False,
+                "description": value.get("description", ""),
+                "schema": {key: item for key, item in value.items() if key != "description"},
+            }
             for name, value in UploadTaskOptions.model_json_schema()["properties"].items()
         ]
         + [
@@ -373,7 +417,12 @@ def _request_schema() -> dict[str, Any]:
                 "in": "header",
                 "required": False,
                 "description": "Required for application/octet-stream; must match actual file bytes.",
-                "schema": {"type": "integer", "minimum": 1, "maximum": MAX_TASK_FILE_BYTES},
+                "schema": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": MAX_TASK_FILE_BYTES,
+                    "examples": [1048576],
+                },
             }
         ],
     }
@@ -402,12 +451,18 @@ def build_task_router(factory: Callable[[Request], TaskBackend]) -> APIRouter:
         )
 
     @router.get("/tasks/{task_id}", response_model=TaskStatusResponse)
-    async def get_task(task_id: str, request: Request) -> Response:
+    async def get_task(
+        task_id: Annotated[str, PathParam(description="Task ID (job_...)", examples=["job_1324359f69a657f22b833071"])],
+        request: Request,
+    ) -> Response:
         """查询与 V1 Job 共用的任务记录。"""
         return JSONResponse(task_payload(await factory(request).get(task_id)))
 
     @router.delete("/tasks/{task_id}")
-    async def cancel_task(task_id: str, request: Request) -> Response:
+    async def cancel_task(
+        task_id: Annotated[str, PathParam(description="Task ID (job_...)", examples=["job_1324359f69a657f22b833071"])],
+        request: Request,
+    ) -> Response:
         """通过后台已有取消机制取消任务。"""
         return JSONResponse(task_payload(await factory(request).cancel(task_id)))
 
@@ -422,7 +477,17 @@ def build_task_router(factory: Callable[[Request], TaskBackend]) -> APIRouter:
             202: {"model": TaskStatusResponse},
         },
     )
-    async def get_result(task_id: str, request: Request, response_format: ResponseFormat = "json") -> Response:
+    async def get_result(
+        task_id: Annotated[str, PathParam(description="Task ID (job_...)", examples=["job_1324359f69a657f22b833071"])],
+        request: Request,
+        response_format: Annotated[
+            ResponseFormat,
+            Query(
+                description='Result shape: "json" inlines the content, "zip" returns the artifact archive.',
+                examples=["json"],
+            ),
+        ] = "json",
+    ) -> Response:
         """根据任务终态返回内联 JSON 或既有 ZIP 产物。"""
         backend = factory(request)
         return await build_task_result(await backend.get(task_id), backend, response_format)
@@ -440,7 +505,23 @@ def build_task_router(factory: Callable[[Request], TaskBackend]) -> APIRouter:
         },
     )
     async def file_parse(
-        request: Request, response_format: ResponseFormat = "json", wait_timeout: int = Query(default=300, ge=1, le=3600)
+        request: Request,
+        response_format: Annotated[
+            ResponseFormat,
+            Query(
+                description='Result shape: "json" inlines the content, "zip" returns the artifact archive.',
+                examples=["json"],
+            ),
+        ] = "json",
+        wait_timeout: Annotated[
+            int,
+            Query(
+                ge=1,
+                le=3600,
+                description="Seconds to wait for the job before returning its current status; the job keeps running.",
+                examples=[300],
+            ),
+        ] = 300,
     ) -> Response:
         """同步包装共享异步任务，等待超时不取消后台工作。"""
         backend = factory(request)

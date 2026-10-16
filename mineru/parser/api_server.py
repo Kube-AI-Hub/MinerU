@@ -190,16 +190,20 @@ _PYDANTIC_CONFIG = ConfigDict(extra="forbid")
 
 
 class ErrorDetail(BaseModel):
+    """One structured error, shared by every V1 endpoint."""
+
     model_config = _PYDANTIC_CONFIG
-    type: str
-    code: str | None = None
-    message: str
-    param: str | None = None
+    type: str = Field(description="Error class, e.g. invalid_request_error, permission_error, engine_error.")
+    code: str | None = Field(default=None, description="Stable machine-readable code, e.g. file_not_found.")
+    message: str = Field(description="Human-readable description of what went wrong.")
+    param: str | None = Field(default=None, description="Request field the error refers to, when there is one.")
 
 
 class ErrorResponse(BaseModel):
+    """The envelope every error response uses."""
+
     model_config = _PYDANTIC_CONFIG
-    error: ErrorDetail
+    error: ErrorDetail = Field(description="The error that occurred.")
 
 
 class ApiServerError(Exception):
@@ -299,17 +303,27 @@ def _http_exception_error(exc: HTTPException) -> ErrorDetail:
 
 
 class HealthFeatures(BaseModel):
+    """What this server instance can do, so a client can plan before submitting."""
+
     model_config = _PYDANTIC_CONFIG
-    webhook: bool = False
-    output_formats: list[OutputFormat] = Field(default_factory=lambda: list(_LOCAL_PARSE_OUTPUT_FORMATS))
-    sources: list[SourceType] = Field(default_factory=lambda: list(_BASE_PARSE_SOURCES))
+    webhook: bool = Field(default=False, description="Whether webhook callbacks are accepted.")
+    output_formats: list[OutputFormat] = Field(
+        default_factory=lambda: list(_LOCAL_PARSE_OUTPUT_FORMATS),
+        description="Output formats this server produces for a parse job.",
+    )
+    sources: list[SourceType] = Field(
+        default_factory=lambda: list(_BASE_PARSE_SOURCES),
+        description="Source types accepted by this server.",
+    )
 
 
 class HealthResponse(BaseModel):
+    """Liveness and capability report."""
+
     model_config = _PYDANTIC_CONFIG
-    status: str = "ok"
-    version: str
-    features: HealthFeatures = Field(default_factory=HealthFeatures)
+    status: str = Field(default="ok", description='Always "ok" when the server is ready to parse.')
+    version: str = Field(description="Engine version serving this request.")
+    features: HealthFeatures = Field(default_factory=HealthFeatures, description="Capabilities of this instance.")
 
 
 # ── Models API ───────────────────────────────────────────────────────
@@ -324,34 +338,42 @@ _VIRTUAL_MODEL_DESCRIPTION = (
 
 
 class ModelInfo(BaseModel):
+    """One advertised model."""
+
     model_config = _PYDANTIC_CONFIG
-    id: str
-    object: Literal["model"] = "model"
-    created: int
-    owned_by: str = "mineru"
-    description: str | None = None
+    id: str = Field(description="Model ID to pass when a request names a model.")
+    object: Literal["model"] = Field(default="model", description="Object type; always \"model\".")
+    created: int = Field(description="Unix timestamp when this server registered the model.")
+    owned_by: str = Field(default="mineru", description="Owner of the model.")
+    description: str | None = Field(default=None, description="What the model is and how quality is selected.")
 
 
 class ModelListResponse(BaseModel):
+    """The models this server advertises."""
+
     model_config = _PYDANTIC_CONFIG
-    object: Literal["list"] = "list"
-    data: list[ModelInfo]
+    object: Literal["list"] = Field(default="list", description="Object type; always \"list\".")
+    data: list[ModelInfo] = Field(description="Advertised models.")
 
 
 # ── Tiers API ────────────────────────────────────────────────────────
 
 
 class TierInfo(BaseModel):
+    """One parsing tier and the model that currently backs it."""
+
     model_config = _PYDANTIC_CONFIG
-    id: Tier
-    description: str
-    current_model: str | None = None
+    id: Tier = Field(description="Tier to pass as `tier` when submitting a parse job.")
+    description: str = Field(description="Quality and cost trade-off this tier represents.")
+    current_model: str | None = Field(default=None, description="Model serving this tier, when one is bound.")
 
 
 class TierListResponse(BaseModel):
+    """The tiers this server can serve."""
+
     model_config = _PYDANTIC_CONFIG
-    object: Literal["list"] = "list"
-    data: list[TierInfo]
+    object: Literal["list"] = Field(default="list", description="Object type; always \"list\".")
+    data: list[TierInfo] = Field(description="Advertised tiers.")
 
 
 class TierInfoData(TypedDict):
@@ -364,42 +386,62 @@ class TierInfoData(TypedDict):
 
 
 class ExpiresAfter(BaseModel):
+    """When the created resource should expire."""
+
     model_config = _PYDANTIC_CONFIG
-    anchor: Literal["created_at"] = "created_at"
-    seconds: int = Field(default=3600, ge=3600, le=2592000)
+    anchor: Literal["created_at"] = Field(default="created_at", description="Timestamp the expiry counts from.")
+    seconds: int = Field(default=3600, ge=3600, le=2592000, description="Lifetime in seconds (1 hour to 30 days).")
 
 
 class CreateUploadRequest(BaseModel):
+    """Open an upload session before sending the bytes."""
+
     model_config = _PYDANTIC_CONFIG
-    filename: str = Field(min_length=1)
-    bytes: int = Field(gt=0)
-    mime_type: str = Field(min_length=1)
-    purpose: Literal["parse", "input_image"] = "parse"
-    sha256sum: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
-    expires_after: ExpiresAfter | None = None
+    filename: str = Field(min_length=1, description="File name, used for the created File object.")
+    bytes: int = Field(gt=0, description="Exact size of the content that will be uploaded.")
+    mime_type: str = Field(min_length=1, description="Content type of the file, e.g. application/pdf.")
+    purpose: Literal["parse", "input_image"] = Field(
+        default="parse", description="What the file is for: parsing a document, or an image input."
+    )
+    sha256sum: str | None = Field(
+        default=None,
+        pattern=r"^[a-f0-9]{64}$",
+        description="Lowercase hex SHA-256 of the content; lets the server reuse an identical upload.",
+    )
+    expires_after: ExpiresAfter | None = Field(
+        default=None, description="Retention for the upload; server default applies when omitted."
+    )
 
 
 class CompleteUploadRequest(BaseModel):
+    """Finish an upload session, optionally asserting the content hash."""
+
     model_config = _PYDANTIC_CONFIG
-    sha256sum: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    sha256sum: str | None = Field(
+        default=None,
+        pattern=r"^[a-f0-9]{64}$",
+        description="Lowercase hex SHA-256 of the uploaded bytes; a mismatch rejects the upload.",
+    )
 
 
 class UploadResponse(BaseModel):
+    """An upload session, and the File object once it is complete."""
+
     model_config = _PYDANTIC_CONFIG
-    id: str
-    object: Literal["upload"] = "upload"
-    bytes: int
-    created_at: int
-    expires_at: int
-    filename: str
-    purpose: FilePurpose = "parse"
-    mime_type: str
-    sha256sum: str | None = None
-    status: UploadStatus
-    upload_url: str | None = None
-    upload_method: Literal["PUT"] | None = None
-    upload_headers: dict[str, str] | None = None
-    file: FileObjectModel | None = None
+    id: str = Field(description="Upload ID, used by the content and completion endpoints.")
+    object: Literal["upload"] = Field(default="upload", description="Object type; always \"upload\".")
+    bytes: int = Field(description="Declared size of the content.")
+    created_at: int = Field(description="Unix timestamp when the session was created.")
+    expires_at: int = Field(description="Unix timestamp after which the session is unusable.")
+    filename: str = Field(description="File name the upload will create.")
+    purpose: FilePurpose = Field(default="parse", description="What the file is for.")
+    mime_type: str = Field(description="Content type of the file.")
+    sha256sum: str | None = Field(default=None, description="Content hash, once known.")
+    status: UploadStatus = Field(description="Upload lifecycle state: pending, completed, cancelled or expired.")
+    upload_url: str | None = Field(default=None, description="Where to PUT the bytes, while the upload is pending.")
+    upload_method: Literal["PUT"] | None = Field(default=None, description="HTTP method for `upload_url`.")
+    upload_headers: dict[str, str] | None = Field(default=None, description="Headers to send with the content PUT.")
+    file: FileObjectModel | None = Field(default=None, description="The created File object, once completed.")
 
 
 # ── File ─────────────────────────────────────────────────────────────
@@ -409,58 +451,70 @@ class FileObjectModel(BaseModel):
     """A file resource (source or parse output)."""
 
     model_config = _PYDANTIC_CONFIG
-    id: str
-    object: Literal["file"] = "file"
-    bytes: int
-    created_at: int
-    expires_at: int | None = None
-    filename: str
-    purpose: FilePurpose
-    sha256sum: str | None = None
+    id: str = Field(description="File ID, used when submitting a job or downloading content.")
+    object: Literal["file"] = Field(default="file", description="Object type; always \"file\".")
+    bytes: int = Field(description="Size of the stored content.")
+    created_at: int = Field(description="Unix timestamp when the file was created.")
+    expires_at: int | None = Field(default=None, description="Unix timestamp after which the file is gone; null keeps it.")
+    filename: str = Field(description="File name.")
+    purpose: FilePurpose = Field(description="What the file is for: parse source, parse output, or image input.")
+    sha256sum: str | None = Field(default=None, description="Content hash, when the server recorded one.")
 
 
 class FileDeletionResponse(BaseModel):
+    """Confirmation that a file was deleted."""
+
     model_config = _PYDANTIC_CONFIG
-    id: str
-    object: Literal["file"] = "file"
-    deleted: bool = True
+    id: str = Field(description="File ID that was deleted.")
+    object: Literal["file"] = Field(default="file", description="Object type; always \"file\".")
+    deleted: bool = Field(default=True, description="Always true on a successful delete.")
 
 
 class FileListResponse(BaseModel):
+    """One page of files."""
+
     model_config = _PYDANTIC_CONFIG
-    object: Literal["list"] = "list"
-    data: list[FileObjectModel]
-    first_id: str | None = None
-    last_id: str | None = None
-    has_more: bool = False
+    object: Literal["list"] = Field(default="list", description="Object type; always \"list\".")
+    data: list[FileObjectModel] = Field(description="Files on this page.")
+    first_id: str | None = Field(default=None, description="ID of the first item on this page.")
+    last_id: str | None = Field(default=None, description="ID of the last item; pass it as `after` for the next page.")
+    has_more: bool = Field(default=False, description="Whether another page is available.")
 
 
 # ── Job sources ──────────────────────────────────────────────────────
 
 
 class FileIdSource(BaseModel):
+    """Reference bytes that were uploaded earlier."""
+
     model_config = _PYDANTIC_CONFIG
-    type: Literal["file_id"] = "file_id"
-    file_id: str
+    type: Literal["file_id"] = Field(default="file_id", description="Selects the file_id source variant.")
+    file_id: str = Field(description="ID of a completed upload's File object.")
 
 
 class UrlSource(BaseModel):
+    """Let the server fetch the document itself."""
+
     model_config = _PYDANTIC_CONFIG
-    type: Literal["url"] = "url"
-    url: str
+    type: Literal["url"] = Field(default="url", description="Selects the url source variant.")
+    url: str = Field(description="HTTP(S) URL the server downloads before parsing.")
 
 
 class InlineSource(BaseModel):
+    """Carry the document in the request body as base64."""
+
     model_config = _PYDANTIC_CONFIG
-    type: Literal["inline"] = "inline"
-    name: str = Field(min_length=1)
-    data: str = Field(min_length=1)
+    type: Literal["inline"] = Field(default="inline", description="Selects the inline source variant.")
+    name: str = Field(min_length=1, description="File name for the inline content; the suffix selects the parser.")
+    data: str = Field(min_length=1, description="Base64-encoded file content.")
 
 
 class LocalSource(BaseModel):
+    """Read a path on the server's own filesystem."""
+
     model_config = _PYDANTIC_CONFIG
-    type: Literal["local"] = "local"
-    path: str = Field(min_length=1)
+    type: Literal["local"] = Field(default="local", description="Selects the local source variant.")
+    path: str = Field(min_length=1, description="Path on the server; only accepted when local sources are enabled.")
 
 
 FileSource = Annotated[
@@ -470,152 +524,202 @@ FileSource = Annotated[
 
 
 class JobFileEntry(BaseModel):
+    """One document to parse, with an optional page selection."""
+
     model_config = _PYDANTIC_CONFIG
-    source: FileSource
-    page_range: str | None = Field(default=None, description=PAGE_RANGE_DESCRIPTION, examples=["1-5,8,r3-r1", "all"])
+    source: FileSource = Field(description="Where the document comes from; `type` selects the source variant.")
+    page_range: str | None = Field(
+        default=None,
+        description=PAGE_RANGE_DESCRIPTION,
+        examples=["1-5,8,r3-r1", "all"],
+    )
 
 
 class CallbackConfig(BaseModel):
+    """Where to deliver a webhook when the job reaches a terminal state."""
+
     model_config = _PYDANTIC_CONFIG
-    url: str
-    secret: str | None = None
+    url: str = Field(description="HTTP(S) URL the server posts the finished job to.")
+    secret: str | None = Field(default=None, description="Shared secret used to sign the callback.")
 
 
 class CreateJobRequest(BaseModel):
+    """Submit documents for parsing."""
+
     model_config = _PYDANTIC_CONFIG
-    files: list[JobFileEntry] = Field(min_length=1, max_length=_MAX_FILES_PER_JOB_DEFAULT)
-    tier: Tier | None = None
-    ocr_mode: Literal["auto", "txt", "ocr"] = Field(
-        default="auto", description="OCR mode for this parse job: auto-detect, native text, or forced OCR."
+    files: list[JobFileEntry] = Field(
+        min_length=1, max_length=_MAX_FILES_PER_JOB_DEFAULT, description="Documents to parse, in order."
     )
-    output_formats: list[str] = ["markdown"]
-    callback: CallbackConfig | None = None
+    tier: Tier | None = Field(
+        default=None,
+        description="Quality tier: flash, basic, standard or advanced. Omit to use the server's default.",
+        examples=["standard"],
+    )
+    ocr_mode: Literal["auto", "txt", "ocr"] = Field(
+        default="auto",
+        description="OCR mode for this parse job: auto-detect, native text, or forced OCR.",
+        examples=["auto"],
+    )
+    output_formats: list[str] = Field(
+        default=["markdown"],
+        description="Artifacts to produce: markdown, middle_json, structured_content, zip.",
+        examples=[["markdown", "middle_json"]],
+    )
+    callback: CallbackConfig | None = Field(
+        default=None, description="Webhook to call when the job finishes; local servers reject it."
+    )
 
 
 # ── Job responses ────────────────────────────────────────────────────
 
 
 class JobLinks(BaseModel):
+    """URLs for the job's own resources."""
+
     model_config = _PYDANTIC_CONFIG
-    self: str
-    cancel: str
+    self: str = Field(description="URL to poll the job's status.")
+    cancel: str = Field(description="URL to cancel the job.")
 
 
 class JobProgress(BaseModel):
+    """Per-file progress counters."""
+
     model_config = _PYDANTIC_CONFIG
-    completed: int = 0
-    failed: int = 0
-    total: int = 0
+    completed: int = Field(default=0, description="Files finished successfully.")
+    failed: int = Field(default=0, description="Files that failed.")
+    total: int = Field(default=0, description="Files in the job.")
 
 
 class FileParseInfo(BaseModel):
+    """How one file was parsed."""
+
     model_config = _PYDANTIC_CONFIG
-    model_used: str | None = None
-    duration_ms: int | None = None
-    parser_version: str | None = None
+    model_used: str | None = Field(default=None, description="Model that parsed the file, when one is recorded.")
+    duration_ms: int | None = Field(default=None, description="Parsing time in milliseconds.")
+    parser_version: str | None = Field(default=None, description="Engine version that parsed the file.")
 
 
 class OutputFileRef(BaseModel):
+    """A produced artifact, fetched through the Files API."""
+
     model_config = _PYDANTIC_CONFIG
-    file_id: str
-    bytes: int
+    file_id: str = Field(description="File ID; download it from /v1/files/{file_id}/content.")
+    bytes: int = Field(description="Size of the artifact.")
 
 
 class OutputFiles(BaseModel):
     """Per-file output artifacts. Content is downloaded via the Files API."""
 
     model_config = _PYDANTIC_CONFIG
-    markdown: OutputFileRef | None = None
-    middle_json: OutputFileRef | None = None
-    structured_content: OutputFileRef | None = None
-    html: OutputFileRef | None = None
-    latex: OutputFileRef | None = None
-    docx: OutputFileRef | None = None
-    zip: OutputFileRef | None = None
+    markdown: OutputFileRef | None = Field(default=None, description="Markdown rendering of the document.")
+    middle_json: OutputFileRef | None = Field(default=None, description="Middle JSON parse result.")
+    structured_content: OutputFileRef | None = Field(default=None, description="Structured content tree.")
+    html: OutputFileRef | None = Field(default=None, description="HTML rendering, when the server produced it.")
+    latex: OutputFileRef | None = Field(default=None, description="LaTeX rendering, when the server produced it.")
+    docx: OutputFileRef | None = Field(default=None, description="DOCX rendering, when the server produced it.")
+    zip: OutputFileRef | None = Field(default=None, description="Self-contained archive of every artifact.")
 
 
 class JobFileResult(BaseModel):
+    """One file's status inside a job."""
+
     model_config = _PYDANTIC_CONFIG
-    file_id: str | None = None
-    name: str
-    page_range: str
-    status: FileStatus
-    parse: FileParseInfo | None = None
-    output_files: OutputFiles | None = None
-    error: ErrorDetail | None = None
+    file_id: str | None = Field(default=None, description="File ID of the stored source, when there is one.")
+    name: str = Field(description="Source file name.")
+    page_range: str = Field(description="Pages that were parsed, as a normalized range string.")
+    status: FileStatus = Field(description="Per-file state: queued, running, completed or failed.")
+    parse: FileParseInfo | None = Field(default=None, description="Parsing details, once finished.")
+    output_files: OutputFiles | None = Field(default=None, description="Artifacts produced for this file.")
+    error: ErrorDetail | None = Field(default=None, description="Why this file failed, when it did.")
 
 
 class JobAsyncResponse(BaseModel):
+    """A parse job and its per-file results."""
+
     model_config = _PYDANTIC_CONFIG
-    job_id: str
-    status: JobStatus
-    created_at: str  # ISO-8601 UTC
-    started_at: str | None = None
-    finished_at: str | None = None
-    tier: Tier
-    output_formats: list[OutputFormat]
-    access_level: AccessLevel
-    progress: JobProgress | None = None
-    files: list[JobFileResult]
-    links: JobLinks
+    job_id: str = Field(description="Job ID, used to poll, cancel and fetch results.")
+    status: JobStatus = Field(description="Job state: queued, running, completed, partial, failed or canceled.")
+    created_at: str = Field(description="ISO-8601 UTC timestamp when the job was submitted.")
+    started_at: str | None = Field(default=None, description="ISO-8601 UTC timestamp when parsing began.")
+    finished_at: str | None = Field(default=None, description="ISO-8601 UTC timestamp when the job reached a terminal state.")
+    tier: Tier = Field(description="Tier the job actually ran at.")
+    output_formats: list[OutputFormat] = Field(description="Artifacts the job was asked to produce.")
+    access_level: AccessLevel = Field(description="Whether the caller was authenticated when the job was submitted.")
+    progress: JobProgress | None = Field(default=None, description="Per-file progress counters.")
+    files: list[JobFileResult] = Field(description="One entry per submitted document, in request order.")
+    links: JobLinks = Field(description="URLs for this job's own resources.")
 
 
 class JobListItem(BaseModel):
+    """One job in a listing."""
+
     model_config = _PYDANTIC_CONFIG
-    job_id: str
-    status: JobStatus
-    created_at: str
-    file_count: int
+    job_id: str = Field(description="Job ID.")
+    status: JobStatus = Field(description="Job state.")
+    created_at: str = Field(description="ISO-8601 UTC timestamp when the job was submitted.")
+    file_count: int = Field(description="Number of documents in the job.")
 
 
 class JobListResponse(BaseModel):
+    """One page of jobs."""
+
     model_config = _PYDANTIC_CONFIG
-    object: Literal["list"] = "list"
-    data: list[JobListItem]
-    first_id: str | None = None
-    last_id: str | None = None
-    has_more: bool = False
+    object: Literal["list"] = Field(default="list", description="Object type; always \"list\".")
+    data: list[JobListItem] = Field(description="Jobs on this page.")
+    first_id: str | None = Field(default=None, description="ID of the first job on this page.")
+    last_id: str | None = Field(default=None, description="ID of the last job; pass it as `after` for the next page.")
+    has_more: bool = Field(default=False, description="Whether another page is available.")
 
 
 class JobCancelResponse(BaseModel):
+    """Confirmation that a job was canceled."""
+
     model_config = _PYDANTIC_CONFIG
-    job_id: str
-    status: Literal["canceled"] = "canceled"
-    canceled_at: str
+    job_id: str = Field(description="Job ID that was canceled.")
+    status: Literal["canceled"] = Field(default="canceled", description="Always \"canceled\".")
+    canceled_at: str = Field(description="ISO-8601 UTC timestamp of the cancellation.")
 
 
 # ── Usage ────────────────────────────────────────────────────────────
 
 
 class UsageBillingPeriod(BaseModel):
+    """Window the usage counters cover."""
+
     model_config = _PYDANTIC_CONFIG
-    start: str  # ISO-8601
-    end: str | None = None
+    start: str = Field(description="ISO-8601 UTC start of the current billing period.")
+    end: str | None = Field(default=None, description="ISO-8601 UTC end of the period; null while it is open.")
 
 
 class UsageCurrent(BaseModel):
+    """What this server has processed in the current period."""
+
     model_config = _PYDANTIC_CONFIG
-    pages_processed: int = 0
-    files_processed: int = 0
-    jobs_created: int = 0
+    pages_processed: int = Field(default=0, description="Pages parsed in this period.")
+    files_processed: int = Field(default=0, description="Files parsed in this period.")
+    jobs_created: int = Field(default=0, description="Jobs submitted in this period.")
 
 
 class UsageLimits(BaseModel):
+    """What this server accepts per request."""
+
     model_config = _PYDANTIC_CONFIG
-    max_pages_per_file: int = 1000
-    max_file_size_bytes: int = _MAX_FILE_SIZE_BYTES_DEFAULT
-    max_files_per_job: int = _MAX_FILES_PER_JOB_DEFAULT
-    max_concurrent_jobs: int = 1
-    max_file_retention_days: int | None = None
+    max_pages_per_file: int = Field(default=1000, description="Page cap for a single document.")
+    max_file_size_bytes: int = Field(default=_MAX_FILE_SIZE_BYTES_DEFAULT, description="Size cap for one uploaded file.")
+    max_files_per_job: int = Field(default=_MAX_FILES_PER_JOB_DEFAULT, description="Document cap for one job.")
+    max_concurrent_jobs: int = Field(default=1, description="Jobs this server runs at the same time.")
+    max_file_retention_days: int | None = Field(default=None, description="Days artifacts are kept; null means unlimited.")
 
 
 class UsageResponse(BaseModel):
+    """Current usage and the limits it is measured against."""
+
     model_config = _PYDANTIC_CONFIG
-    object: Literal["usage"] = "usage"
-    access_level: AccessLevel
-    billing_period: UsageBillingPeriod
-    current: UsageCurrent
-    limits: UsageLimits
+    object: Literal["usage"] = Field(default="usage", description="Object type; always \"usage\".")
+    access_level: AccessLevel = Field(description="Whether this caller is authenticated.")
+    billing_period: UsageBillingPeriod = Field(description="Window the counters cover.")
+    current: UsageCurrent = Field(description="Counters for the current period.")
+    limits: UsageLimits = Field(description="Limits applied to new requests.")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -1914,7 +2018,7 @@ def _require_model_preload_ready(request: Request) -> None:
     tags=["Health"],
 )
 async def get_health(request: Request) -> HealthResponse:
-    """Health check endpoint."""
+    """Report readiness and what this server can do."""
     _require_model_preload_ready(request)
     return HealthResponse(
         version=__version__,
@@ -1933,7 +2037,7 @@ async def get_health(request: Request) -> HealthResponse:
     tags=["Models"],
 )
 async def list_models(request: Request) -> ModelListResponse:
-    """List all available parsing models."""
+    """List the model IDs this server accepts."""
     _require_model_preload_ready(request)
     model_ids: list[str] = request.app.state.model_ids
     registered_at: int = request.app.state.model_registered_at
@@ -1951,9 +2055,9 @@ async def list_models(request: Request) -> ModelListResponse:
 )
 async def get_model(
     request: Request,
-    model: str = Path(description="Model ID"),
+    model: str = Path(description="Model ID", examples=["mineru-4.0.12"]),
 ) -> ModelInfo:
-    """Retrieve a single model by ID."""
+    """Retrieve one advertised model by ID."""
     _require_model_preload_ready(request)
     model_ids: list[str] = request.app.state.model_ids
     if model not in model_ids:
@@ -1977,7 +2081,7 @@ async def get_model(
     tags=["Tiers"],
 )
 async def list_tiers(request: Request) -> TierListResponse:
-    """List all available parser tiers."""
+    """List the tiers this server can serve."""
     _require_model_preload_ready(request)
     tiers: list[TierInfoData] = request.app.state.tiers
     return TierListResponse(
@@ -1994,13 +2098,19 @@ async def list_tiers(request: Request) -> TierListResponse:
     status_code=status.HTTP_200_OK,
     responses={200: {"model": UploadResponse}, **_ERR_400, **_ERR_413},
     tags=["Uploads"],
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "description": "Declares the file to upload; the bytes follow in a separate PUT.",
+        }
+    },
 )
 async def create_upload(
     body: CreateUploadRequest,
     request: Request,
     store: FileStore = Depends(_get_store),
 ) -> Response:
-    """Create an Upload."""
+    """Open an upload session, then PUT the bytes to the returned URL."""
     base = str(request.base_url).rstrip("/")
     resp = store.create_upload(body, base_url=base)
     if resp.status == "completed":
@@ -2016,7 +2126,7 @@ async def create_upload(
     tags=["Uploads"],
 )
 async def get_upload(
-    upload_id: str = Path(description="Upload ID (upload_...)"),
+    upload_id: str = Path(description="Upload ID (upload_...)", examples=["upload_3f9c2b1a"]),
     store: FileStore = Depends(_get_store),
 ) -> UploadResponse:
     """Retrieve an Upload by ID."""
@@ -2029,10 +2139,16 @@ async def get_upload(
     status_code=status.HTTP_200_OK,
     responses={**_ERR_404, **_ERR_409, **_ERR_413},
     tags=["Uploads"],
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "description": "Raw file bytes for this upload session.",
+        }
+    },
 )
 async def upload_content(
-    upload_id: str = Path(description="Upload ID"),
-    data: bytes = Body(media_type="application/octet-stream"),
+    upload_id: str = Path(description="Upload ID", examples=["upload_3f9c2b1a"]),
+    data: bytes = Body(media_type="application/octet-stream", description="Raw file bytes for this upload session."),
     store: FileStore = Depends(_get_store),
 ) -> Response:
     """Upload raw bytes for an upload (OpenAI-compatible)."""
@@ -2046,9 +2162,15 @@ async def upload_content(
     status_code=status.HTTP_200_OK,
     responses={**_ERR_400, **_ERR_404, **_ERR_409, **_ERR_413},
     tags=["Uploads"],
+    openapi_extra={
+        "requestBody": {
+            "required": False,
+            "description": "Optional: assert the uploaded content's SHA-256 before the upload is finalized.",
+        }
+    },
 )
 async def complete_upload(
-    upload_id: str = Path(description="Upload ID"),
+    upload_id: str = Path(description="Upload ID", examples=["upload_3f9c2b1a"]),
     body: CompleteUploadRequest | None = None,
     store: FileStore = Depends(_get_store),
 ) -> UploadResponse:
@@ -2064,7 +2186,7 @@ async def complete_upload(
     tags=["Uploads"],
 )
 async def cancel_upload(
-    upload_id: str = Path(description="Upload ID"),
+    upload_id: str = Path(description="Upload ID", examples=["upload_3f9c2b1a"]),
     store: FileStore = Depends(_get_store),
 ) -> UploadResponse:
     """Cancel an in-progress upload."""
@@ -2081,10 +2203,14 @@ async def cancel_upload(
     tags=["Files"],
 )
 async def list_files(
-    after: str | None = Query(default=None, description="Cursor: last_id from previous page"),
-    limit: int = Query(default=100, ge=1, le=1000),
-    order: Literal["asc", "desc"] = Query(default="desc"),
-    purpose: FilePurpose | None = Query(default=None),
+    after: str | None = Query(
+        default=None, description="Cursor: last_id from previous page", examples=["file-0cf8b284ab9934cb7dfb68e0"]
+    ),
+    limit: int = Query(default=100, ge=1, le=1000, description="Items per page", examples=[100]),
+    order: Literal["asc", "desc"] = Query(default="desc", description="Sort by created_at", examples=["desc"]),
+    purpose: FilePurpose | None = Query(
+        default=None, description="Only return files with this purpose", examples=["parse_output"]
+    ),
     store: FileStore = Depends(_get_store),
 ) -> FileListResponse:
     """List files for the current tenant."""
@@ -2099,7 +2225,7 @@ async def list_files(
     tags=["Files"],
 )
 async def get_file(
-    file_id: str = Path(description="File ID (file-...)"),
+    file_id: str = Path(description="File ID (file-...)", examples=["file-0cf8b284ab9934cb7dfb68e0"]),
     store: FileStore = Depends(_get_store),
 ) -> FileObjectModel:
     """Retrieve file metadata."""
@@ -2119,7 +2245,7 @@ async def get_file(
     tags=["Files"],
 )
 async def get_file_content(
-    file_id: str = Path(description="File ID"),
+    file_id: str = Path(description="File ID", examples=["file-0cf8b284ab9934cb7dfb68e0"]),
     store: FileStore = Depends(_get_store),
 ) -> Response:
     """Download parse-output content."""
@@ -2135,7 +2261,7 @@ async def get_file_content(
     tags=["Files"],
 )
 async def delete_file(
-    file_id: str = Path(description="File ID"),
+    file_id: str = Path(description="File ID", examples=["file-0cf8b284ab9934cb7dfb68e0"]),
     store: FileStore = Depends(_get_store),
 ) -> FileDeletionResponse:
     """Delete a file from the current tenant view."""
@@ -2283,6 +2409,12 @@ async def submit_parse_job(
         **_ERR_503,
     },
     tags=["Jobs"],
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "description": "Documents to parse, their sources, and the tier and output formats to use.",
+        }
+    },
 )
 async def create_job(
     body: CreateJobRequest,
@@ -2306,7 +2438,7 @@ async def create_job(
     tags=["Jobs"],
 )
 async def get_job(
-    job_id: str = Path(description="Job ID (job_...)"),
+    job_id: str = Path(description="Job ID (job_...)", examples=["job_1324359f69a657f22b833071"]),
     job_store: JobStore = Depends(_get_job_store),
     access_level: AccessLevel = Depends(_resolve_access_level),
 ) -> JobAsyncResponse:
@@ -2321,11 +2453,20 @@ async def get_job(
     tags=["Jobs"],
 )
 async def list_jobs(
-    status_filter: str | None = Query(default=None, alias="status", description="Filter by status (comma-separated)"),
-    limit: int = Query(default=20, ge=1, le=100, description="Items per page"),
-    after: str | None = Query(default=None, description="Pagination cursor (last_id from previous page)"),
-    order: Literal["asc", "desc"] = Query(default="desc", description="Sort by created_at"),
-    created_after: str | None = Query(default=None, description="ISO-8601 lower bound for created_at"),
+    status_filter: str | None = Query(
+        default=None,
+        alias="status",
+        description="Filter by status (comma-separated)",
+        examples=["completed,failed"],
+    ),
+    limit: int = Query(default=20, ge=1, le=100, description="Items per page", examples=[20]),
+    after: str | None = Query(
+        default=None, description="Pagination cursor (last_id from previous page)", examples=["job_1324359f69a657f22b833071"]
+    ),
+    order: Literal["asc", "desc"] = Query(default="desc", description="Sort by created_at", examples=["desc"]),
+    created_after: str | None = Query(
+        default=None, description="ISO-8601 lower bound for created_at", examples=["2026-01-01T00:00:00Z"]
+    ),
     job_store: JobStore = Depends(_get_job_store),
 ) -> JobListResponse:
     """List jobs for the current tenant."""
@@ -2346,7 +2487,7 @@ async def list_jobs(
     tags=["Jobs"],
 )
 async def cancel_job(
-    job_id: str = Path(description="Job ID"),
+    job_id: str = Path(description="Job ID", examples=["job_1324359f69a657f22b833071"]),
     job_store: JobStore = Depends(_get_job_store),
 ) -> JobCancelResponse:
     """Cancel a queued or running job."""

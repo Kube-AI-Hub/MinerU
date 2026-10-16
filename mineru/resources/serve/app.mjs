@@ -21,16 +21,20 @@ window.MinerUSourceViewer = SourceViewer;
 
   var TIERS = ['flash', 'basic', 'standard', 'advanced'];
 
-  /* Formats the API can return. `needsKey` marks the ones the engine refuses
-     without an API key (see OutputFormatReqToken), so the menu can disable them
-     with a reason rather than failing on click. */
+  /* Formats the API can return, plus the ones the server renders for the page
+     from the result it already holds. `render` marks the latter: the parse API
+     refuses them without an API key, so the page asks the engine to render them
+     from the archive instead of downloading them from the job, which keeps them
+     available without a token, exactly like the WebUI. */
   var FORMATS = [
     { id: 'markdown', label: 'Markdown', ext: 'md', mime: 'text/markdown' },
     { id: 'middle_json', label: 'JSON', ext: 'json', mime: 'application/json' },
     { id: 'structured_content', label: 'Structured JSON', ext: 'json', mime: 'application/json' },
-    { id: 'html', label: 'HTML', ext: 'html', mime: 'text/html', needsKey: true },
-    { id: 'latex', label: 'LaTeX', ext: 'tex', mime: 'application/x-tex', needsKey: true },
-    { id: 'docx', label: 'DOCX', ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', needsKey: true },
+    { id: 'html', label: 'HTML', ext: 'html', mime: 'text/html', render: true },
+    { id: 'latex', label: 'LaTeX', ext: 'zip', mime: 'application/zip', render: true },
+    { id: 'docx', label: 'DOCX', ext: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', render: true },
+    { id: 'epub', label: 'EPUB', ext: 'epub', mime: 'application/epub+zip', render: true },
+    { id: 'pdf', label: 'PDF', ext: 'pdf', mime: 'application/pdf', render: true },
     { id: 'zip', label: 'ZIP', ext: 'zip', mime: 'application/zip' }
   ];
 
@@ -632,23 +636,26 @@ window.MinerUSourceViewer = SourceViewer;
     return state.artifacts[format.id + '.' + format.ext];
   }
 
+  /* Formats the engine renders on request have no artifact in the archive, so
+     they are available whenever a parse result is: the server produces them
+     from the same result the preview came from. */
+  function formatAvailable(format) {
+    if (format.render) return !!state.artifacts['__zip'];
+    return !!artifactFor(format);
+  }
+
   function refreshDownloadMenu() {
     var hasResult = !!state.markdown;
-    var hasToken = !!token();
     document.querySelectorAll('.download-item').forEach(function (item) {
       var format = FORMATS.filter(function (f) {
         return f.id === item.dataset.format;
       })[0];
-      var artifact = artifactFor(format);
       var hint = item.querySelector('.hint');
 
       if (!hasResult) {
         item.disabled = true;
         hint.textContent = '';
-      } else if (format.needsKey && !hasToken) {
-        item.disabled = true;
-        hint.textContent = t('needsToken');
-      } else if (!artifact) {
+      } else if (!formatAvailable(format)) {
         item.disabled = true;
         hint.textContent = t('notProduced');
       } else {
@@ -659,14 +666,80 @@ window.MinerUSourceViewer = SourceViewer;
   }
 
   function download(format) {
+    if (format.render) {
+      downloadRendered(format);
+      return;
+    }
     var artifact = artifactFor(format);
     if (!artifact) return;
-    var base = (state.filename || 'result').replace(/\.[^.]+$/, '');
+    saveBlob(artifact.blob, baseName() + '.' + format.ext);
+  }
+
+  /* The archive is posted back so the server can render the format with the
+     same renderer the WebUI uses; a failure is reported in place rather than
+     silently doing nothing. */
+  function downloadRendered(format) {
+    var archive = state.artifacts['__zip'];
+    if (!archive) return;
+    var item = document.querySelector('.download-item[data-format="' + format.id + '"]');
+    if (item) item.disabled = true;
+    setStatus(t('renderingFormat', { format: format.label }), '');
+    fetch('./download?format=' + encodeURIComponent(format.id) + '&name=' + encodeURIComponent(baseName()), {
+      method: 'POST',
+      headers: Object.assign({ 'Content-Type': 'application/zip' }, authHeaders()),
+      body: archive.blob
+    })
+      .then(function (response) {
+        if (!response.ok) {
+          return response.json().then(
+            function (payload) {
+              throw new Error((payload && payload.error) || 'HTTP ' + response.status);
+            },
+            function () {
+              throw new Error('HTTP ' + response.status);
+            }
+          );
+        }
+        /* The server names the file the way the WebUI does (a LaTeX bundle,
+           a rendered PDF), so use its name instead of rebuilding one. */
+        var named = filenameFrom(response.headers.get('Content-Disposition'));
+        return response.blob().then(function (blob) {
+          return { blob: blob, filename: named || baseName() + '.' + format.ext };
+        });
+      })
+      .then(function (result) {
+        saveBlob(result.blob, result.filename);
+      })
+      .catch(function (error) {
+        setStatus(t('failed', { message: error.message }), 'error');
+      })
+      .finally(function () {
+        if (item) item.disabled = false;
+        refreshDownloadMenu();
+      });
+  }
+
+  function filenameFrom(disposition) {
+    if (!disposition) return '';
+    var match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+    if (!match) return '';
+    try {
+      return decodeURIComponent(match[1]);
+    } catch (error) {
+      return match[1];
+    }
+  }
+
+  function baseName() {
+    return (state.filename || 'result').replace(/\.[^.]+$/, '');
+  }
+
+  function saveBlob(blob, filename) {
     var link = document.createElement('a');
-    link.href = trackObjectUrl(URL.createObjectURL(artifact.blob));
-    link.download = base + '.' + format.ext;
+    link.href = trackObjectUrl(URL.createObjectURL(blob));
+    link.download = filename;
     link.click();
-    setStatus(t('downloaded', { name: base + '.' + format.ext }), 'ok');
+    setStatus(t('downloaded', { name: filename }), 'ok');
   }
   /* --------------------------------------------------------------- parsing */
 

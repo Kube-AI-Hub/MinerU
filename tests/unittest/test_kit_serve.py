@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -21,6 +23,58 @@ def _write_weights(directory: Path) -> Path:
     for name in WEIGHT_FILES:
         (directory / name).write_text("{}", encoding="utf-8")
     return directory
+
+
+@pytest.fixture()
+def result_archive() -> bytes:
+    """Build the result archive the page posts back, from a real parse result.
+
+    Mirrors what the parse API puts in its zip: the middle_json plus the image
+    sidecars the renderers read. The fixture's image blocks carry no path of
+    their own, so one is attached here — a real archive always has them, and
+    the docx/epub/pdf renderers read the image through it.
+    """
+    fixture = Path(__file__).resolve().parents[1] / "fixtures" / "middle_small.json"
+    middle_json = json.loads(fixture.read_text(encoding="utf-8"))
+    image_path = "images/page_1_chart_5.png"
+    for page in middle_json["pages"]:
+        for block in page["blocks"]:
+            if block["type"] != "image":
+                continue
+            for body in block.get("content") or []:
+                if body.get("type") == "image_body":
+                    body["image_path"] = image_path
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("middle_json.json", json.dumps(middle_json, ensure_ascii=False))
+        archive.writestr("markdown.md", "# The response of flow duration curves to afforestation")
+        archive.writestr(image_path, _png_bytes())
+    return buffer.getvalue()
+
+
+def _png_bytes() -> bytes:
+    """Return a small valid PNG, the sidecar the renderers read."""
+    buffer = io.BytesIO()
+    # Written by hand rather than bundled: a fixture image only has to decode.
+    import struct
+    import zlib
+
+    def chunk(tag: bytes, payload: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(payload))
+            + tag
+            + payload
+            + struct.pack(">I", zlib.crc32(tag + payload) & 0xFFFFFFFF)
+        )
+
+    width = height = 2
+    raw = b"".join(b"\x00" + b"\xff\x00\x00" * width for _ in range(height))
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw))
+        + chunk(b"IEND", b"")
+    )
 
 
 @pytest.fixture()
@@ -275,6 +329,194 @@ class TestServingApp:
         assert response.status_code == 422
         assert "error" in response.json()
 
+    def test_config_lists_the_renderable_download_formats(self, client):
+        """The page learns which formats the server can render from /config."""
+        payload = client.get(serve_app.CONFIG_PATH).json()
+
+        assert payload["rendered_downloads"] == [
+            "html",
+            "latex",
+            "docx",
+            "epub",
+            "pdf",
+        ]
+
+    def test_openapi_documents_every_operation_and_field(self, client):
+        """The API tab is the contract a platform integrates against.
+
+        A field without a description, or a parameter without an example, reads
+        as "unknown" to whoever writes the client, and the gap is invisible in
+        review. Guard both here so a new endpoint cannot land undocumented.
+        """
+        spec = client.get("/openapi.json").json()
+
+        def has_example(schema: dict) -> bool:
+            return bool(schema.get("example") or schema.get("examples") or schema.get("default") is not None)
+
+        operations = 0
+        for path, methods in spec["paths"].items():
+            for method, operation in methods.items():
+                if method not in {"get", "post", "put", "delete", "patch"}:
+                    continue
+                operations += 1
+                where = f"{method.upper()} {path}"
+                assert operation.get("summary"), where
+                assert operation.get("description"), where
+                body = operation.get("requestBody")
+                if body:
+                    assert body.get("description"), f"{where} requestBody"
+                for parameter in operation.get("parameters", []):
+                    assert parameter.get("description"), f"{where} parameter {parameter['name']}"
+                    assert has_example(parameter.get("schema", {})), f"{where} parameter {parameter['name']}"
+        assert operations == 23, operations
+
+        # ValidationError/HTTPValidationError are FastAPI's own shapes; every
+        # schema this project defines must describe its fields.
+        for name, schema in spec["components"]["schemas"].items():
+            if name in {"ValidationError", "HTTPValidationError"}:
+                continue
+            for prop, definition in (schema.get("properties") or {}).items():
+                assert definition.get("description"), f"{name}.{prop}"
+
+    def test_download_renders_every_format_without_an_api_key(self, client, result_archive):
+        """The WebUI offers these formats to everyone; so must the playground.
+
+        Each is checked for the signature of the file the caller receives, so a
+        format that renders to the wrong bytes fails here rather than at the
+        user's download folder.
+        """
+        signatures = {
+            "html": b"<!DOCTYPE html",
+            "docx": b"PK\x03\x04",
+            "epub": b"PK\x03\x04",
+            "pdf": b"%PDF",
+        }
+        for format_name, signature in signatures.items():
+            response = client.post(
+                f"{serve_app.DOWNLOAD_PATH}?format={format_name}&name=demo1.pdf",
+                content=result_archive,
+                headers={"Content-Type": "application/zip"},
+            )
+            assert response.status_code == 200, (format_name, response.text)
+            assert response.content.startswith(signature), format_name
+            assert "attachment" in response.headers["content-disposition"]
+
+    def test_download_latex_is_a_bundle_with_its_source(self, client, result_archive):
+        """LaTeX ships as a zip so the .tex and the images travel together."""
+        response = client.post(
+            f"{serve_app.DOWNLOAD_PATH}?format=latex&name=demo1.pdf",
+            content=result_archive,
+            headers={"Content-Type": "application/zip"},
+        )
+
+        assert response.status_code == 200, response.text
+        with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+            names = archive.namelist()
+            assert "demo1.tex" in names
+            assert any(name.startswith("images/") for name in names)
+
+    def test_download_html_inlines_its_images(self, client, result_archive):
+        """A downloaded HTML is one file, so its images must travel inside it."""
+        response = client.post(
+            f"{serve_app.DOWNLOAD_PATH}?format=html&name=demo1.pdf",
+            content=result_archive,
+            headers={"Content-Type": "application/zip"},
+        )
+
+        assert response.status_code == 200, response.text
+        html = response.text
+        assert "flow duration curves" in html.lower()
+        # The fixture's image blocks carry no image_path, so build the archive
+        # check on the sidecar the helper always writes.
+        assert 'src="images/' not in html
+
+    def test_download_names_the_file_after_the_source(self, client, result_archive):
+        """The download keeps the source's name, so it is recognisable later."""
+        response = client.post(
+            f"{serve_app.DOWNLOAD_PATH}?format=docx&name=demo1.pdf",
+            content=result_archive,
+            headers={"Content-Type": "application/zip"},
+        )
+
+        assert response.status_code == 200, response.text
+        assert "demo1.docx" in response.headers["content-disposition"]
+
+    def test_download_ignores_paths_in_the_supplied_name(self, client, result_archive):
+        """The name crosses a trust boundary, so only its stem may survive."""
+        response = client.post(
+            f"{serve_app.DOWNLOAD_PATH}?format=html&name=../../etc/passwd",
+            content=result_archive,
+            headers={"Content-Type": "application/zip"},
+        )
+
+        assert response.status_code == 200, response.text
+        disposition = response.headers["content-disposition"]
+        assert ".." not in disposition
+        assert "passwd" in disposition
+
+    def test_download_survives_a_non_ascii_source_name(self, client, result_archive):
+        """HTTP headers are latin-1; a Chinese name used to 500 the download."""
+        response = client.post(
+            f"{serve_app.DOWNLOAD_PATH}?format=html&name=%E6%A0%B7%E4%BE%8B.pdf",
+            content=result_archive,
+            headers={"Content-Type": "application/zip"},
+        )
+
+        assert response.status_code == 200, response.text
+        disposition = response.headers["content-disposition"]
+        # The real name rides in filename* so it survives the header encoding.
+        assert "filename*=UTF-8''" in disposition
+        assert "%E6%A0%B7%E4%BE%8B" in disposition
+
+    def test_download_rejects_an_unknown_format(self, client, result_archive):
+        response = client.post(
+            f"{serve_app.DOWNLOAD_PATH}?format=exe",
+            content=result_archive,
+            headers={"Content-Type": "application/zip"},
+        )
+
+        assert response.status_code == 400
+        assert "format" in response.json()["error"]
+
+    def test_download_rejects_a_body_that_is_not_an_archive(self, client):
+        response = client.post(
+            f"{serve_app.DOWNLOAD_PATH}?format=html",
+            content=b"not a zip",
+            headers={"Content-Type": "application/zip"},
+        )
+
+        assert response.status_code == 400
+        assert "zip" in response.json()["error"]
+
+    def test_download_rejects_an_archive_without_a_parse_result(self, client):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("readme.txt", "hello")
+
+        response = client.post(
+            f"{serve_app.DOWNLOAD_PATH}?format=html",
+            content=buffer.getvalue(),
+            headers={"Content-Type": "application/zip"},
+        )
+
+        assert response.status_code == 400
+        assert "middle_json.json" in response.json()["error"]
+
+    def test_download_stays_reachable_when_an_api_key_is_configured(self, tmp_path, model_home, result_archive):
+        """These formats must not require a token, so the route cannot be gated."""
+        source = _write_weights(tmp_path / "mounted")
+        from fastapi.testclient import TestClient
+
+        application = serve_app.create_serving_app(tier="standard", model_dir=str(source), api_key="secret")
+        with TestClient(application) as test_client:
+            response = test_client.post(
+                f"{serve_app.DOWNLOAD_PATH}?format=html",
+                content=result_archive,
+                headers={"Content-Type": "application/zip"},
+            )
+
+        assert response.status_code == 200, response.text
+
     def test_render_stays_reachable_when_an_api_key_is_configured(self, tmp_path, model_home):
         """The page loads its preview before the user opts into sending a token."""
         source = _write_weights(tmp_path / "mounted")
@@ -399,9 +641,17 @@ class TestResponseParsing:
         """Force OCR means "ignore the text layer", which is the ocr mode."""
         assert "forceOcr" in script
 
-    def test_marks_the_formats_that_need_an_api_key(self, script):
-        """html/latex/docx are refused without a key, so the menu disables them."""
-        assert "needsKey" in script
+    def test_marks_the_renderable_formats_as_server_rendered(self, script):
+        """html/latex/docx/epub/pdf are rendered from the result by the server.
+
+        The parse API refuses html/latex/docx without an API key and does not
+        offer epub/pdf at all, so the menu must not gate them on a token.
+        """
+        assert "render: true" in script
+        for format_id in ("'html'", "'latex'", "'docx'", "'epub'", "'pdf'"):
+            assert format_id in script
+        assert "needsKey" not in script
+        assert "needsToken" not in script
 
     def test_reports_the_nested_error_message(self, script):
         """The reason lives at files[].error.message, not at the top level."""

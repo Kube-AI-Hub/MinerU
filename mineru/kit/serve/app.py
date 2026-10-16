@@ -32,7 +32,15 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from ...parser.api_server import create_app
+from ...utils.async_utils import run_sync
 from ...version import __version__
+from .downloads import (
+    MAX_ARCHIVE_BYTES,
+    DownloadFormatError,
+    content_disposition,
+    render_download,
+    renderable_formats,
+)
 from .model_bridge import BridgeResult, bridge_vlm_weights, weights_dir
 
 logger = logging.getLogger(__name__)
@@ -46,6 +54,11 @@ CONFIG_PATH = "/config"
 #: Renders a parse result to HTML for the result pane, using the same renderer
 #: as the WebUI so both show the document the same way.
 RENDER_PATH = "/render"
+
+#: Renders one of the extra download formats from a result archive. The page
+#: uploads the archive it already holds, so the endpoint keeps no state and
+#: works the same way for any job.
+DOWNLOAD_PATH = "/download"
 
 #: Bundled demo documents the playground offers so a first run needs no file.
 DEMO_FILES = ("demo1.pdf", "demo2.pdf")
@@ -149,7 +162,7 @@ def create_serving_app(
         # serving health route stays reachable when an API key is configured.
         # The playground's own routes are public for the same reason: the page
         # and its assets load before the user opts into sending a token.
-        public_paths=("/health", CONFIG_PATH, RENDER_PATH),
+        public_paths=("/health", CONFIG_PATH, RENDER_PATH, DOWNLOAD_PATH),
         **kwargs,  # type: ignore[arg-type]
     )
 
@@ -194,6 +207,7 @@ def create_serving_app(
                 "version": __version__,
                 "demo_documents": demo_documents(),
                 "demo_base": "./demo",
+                "rendered_downloads": list(renderable_formats()),
             }
         )
 
@@ -252,6 +266,54 @@ def create_serving_app(
                 "blocks": _block_geometry(result.middle_json),
                 "rendered_blocks": _rendered_block_keys(html),
             }
+        )
+
+    @application.post(DOWNLOAD_PATH, include_in_schema=False)
+    async def render_result_download(request: Request) -> Response:
+        """Render one of the extra formats from the archive the page holds.
+
+        The parse API refuses HTML, LaTeX and DOCX without an API key, and EPUB
+        and PDF are not offered by the local parse server at all. A playground
+        opened against a local or intranet deployment should still be able to
+        hand all of them over, so they are rendered here with the same
+        renderers the WebUI uses, from the result the page already downloaded.
+
+        Query: ``format`` (html, latex, docx, epub, pdf), ``name`` for the
+        download's file name. Body: the result zip, as ``application/zip``.
+        """
+        format_name = (request.query_params.get("format") or "").strip().lower()
+        if format_name not in renderable_formats():
+            return JSONResponse(
+                {"error": f"format must be one of: {', '.join(renderable_formats())}"},
+                status_code=400,
+            )
+        declared = request.headers.get("content-length")
+        if declared is not None and declared.isdigit() and int(declared) > MAX_ARCHIVE_BYTES:
+            return JSONResponse({"error": "the result archive is too large"}, status_code=413)
+
+        archive = await request.body()
+        if len(archive) > MAX_ARCHIVE_BYTES:
+            return JSONResponse({"error": "the result archive is too large"}, status_code=413)
+
+        try:
+            # Rendering is CPU-bound and touches the disk, so keep it off the
+            # event loop; the page waits on this response.
+            download = await run_sync(
+                render_download,
+                archive,
+                format_name=format_name,
+                stem=request.query_params.get("name") or "",
+            )
+        except DownloadFormatError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        except Exception as exc:  # noqa: BLE001 - reported to the page
+            logger.warning("Result download rendering failed for %s: %s", format_name, exc)
+            return JSONResponse({"error": f"rendering {format_name} failed: {exc}"}, status_code=422)
+
+        return Response(
+            content=download.payload,
+            media_type=download.media_type,
+            headers={"Content-Disposition": content_disposition(download.filename)},
         )
 
     @application.get("/", include_in_schema=False)
