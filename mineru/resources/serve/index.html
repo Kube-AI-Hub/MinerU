@@ -43,7 +43,8 @@
                 <div class="demos-list" id="demos-list"></div>
               </div>
 
-              <div class="tier-block">
+              <div class="field tier-block">
+                <span data-i18n="tier">解析等级</span>
                 <div class="tier-head">
                   <span class="tier-name" id="tier-name">standard</span>
                   <span class="tier-notice" id="tier-notice"></span>
@@ -53,16 +54,9 @@
                 <p class="muted" id="tier-desc"></p>
               </div>
 
-              <label class="field">
-                <span data-i18n="ocrMode">OCR 模式</span>
-                <select id="ocr-mode">
-                  <option value="auto" selected>auto</option>
-                  <option value="txt">txt</option>
-                  <option value="ocr">ocr</option>
-                </select>
-              </label>
-
-              <!-- 强制 OCR：与原版 WebUI 的复选框一致，勾选即把 OCR 模式锁到 ocr -->
+              <!-- 强制 OCR：与原版 WebUI 一致，只有这一个 OCR 控件。
+                   勾选即把 ocr_mode 锁到 ocr（原版语义就是「忽略文本层」），
+                   因此不再单列 OCR 模式下拉框，避免两个控件表达同一件事。 -->
               <label class="checkbox-field">
                 <input type="checkbox" id="force-ocr" />
                 <span class="checkbox-text">
@@ -140,28 +134,11 @@
         </section>
 
         <section class="section" id="section-api">
-          <rapi-doc
-            id="rapidoc"
-            render-style="read"
-            theme="dark"
-            bg-color="#14215a"
-            text-color="#deebf6"
-            header-color="#1f2c6a"
-            primary-color="#a981f8"
-            load-fonts="false"
-            regular-font="Inter, PingFang SC, Microsoft YaHei, system-ui, sans-serif"
-            mono-font="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-            show-header="false"
-            layout="row"
-            show-info="true"
-            allow-try="true"
-            allow-authentication="true"
-            allow-spec-url-load="false"
-            allow-spec-file-load="false"
-            allow-server-selection="false"
-            allow-api-list-style-selection="false"
-            heading-text="MinerU API"
-          ></rapi-doc>
+          <!-- RapiDoc is mounted on first use rather than declared here. Its
+               connectedCallback stamps the parent with `width: 100vw; height:
+               100vh` whenever the parent measures zero — which is exactly what
+               a `display: none` section reports. Declared here it would force
+               the API tab to a full viewport and break the page layout. -->
         </section>
       </div>
 

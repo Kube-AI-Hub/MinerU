@@ -20710,7 +20710,62 @@ customize their theme. Simply add your css to this file and yarn build.
     "Query Params": "查询参数",
     "Cookie Params": "Cookie 参数",
     "Try It": "试一试",
-    "Status": "状态"
+    "Status": "状态",
+    "Successful Response": "成功响应",
+    "Validation Error": "参数校验失败",
+    "Bad Request": "请求错误",
+    "Not Found": "未找到",
+    "Forbidden": "无权限",
+    "Conflict": "冲突",
+    "Service Unavailable": "服务不可用",
+    "Request Entity Too Large": "请求体过大",
+    "Too Many Requests": "请求过于频繁",
+    "Accepted": "已接受",
+    "Media type": "媒体类型",
+    "Media Type": "媒体类型",
+    "Request Body Parameters": "请求体参数",
+    "Response Description": "响应说明",
+    "API Description": "接口说明",
+    "API Path": "接口路径",
+    "API Parameters": "接口参数",
+    "Query-string parameters": "查询串参数",
+    "QUERY-STRING PARAMETERS": "查询串参数",
+    "Path parameters": "路径参数",
+    "PATH PARAMETERS": "路径参数",
+    "Header parameters": "请求头参数",
+    "HEADER PARAMETERS": "请求头参数",
+    "Request body": "请求体",
+    "Body parameters": "请求体参数",
+    "BODY PARAMETERS": "请求体参数",
+    "array of string": "字符串数组",
+    "add-multiple": "添加多项",
+    "No API key applied": "未使用 API 密钥",
+    "API Key": "API 密钥",
+    "Bearer": "Bearer",
+    "Bearer API key when configured": "配置后使用的 Bearer 访问令牌",
+    "Default": "默认",
+    "Allowed": "允许值",
+    "Min": "最小值",
+    "Max": "最大值",
+    "Min Length": "最小长度",
+    "Max Length": "最大长度",
+    "Pattern": "匹配模式",
+    "Minimum": "最小值",
+    "Maximum": "最大值",
+    "Empty": "空",
+    "Any": "任意",
+    "String": "字符串",
+    "Integer": "整数",
+    "Number": "数字",
+    "Boolean": "布尔值",
+    "Array": "数组",
+    "Object": "对象",
+    "Loading": "加载中",
+    "Loading...": "加载中...",
+    "Expand": "展开",
+    "Collapse": "收起",
+    "Undo": "撤销",
+    "SET": "设置"
   };
   const lang = new URLSearchParams(window.location.search).get("lang") === "en" ? "en" : "zh";
   if (lang === "en") return;
@@ -20730,9 +20785,14 @@ customize their theme. Simply add your css to this file and yarn build.
   const apply = (el) => {
     const target = el.shadowRoot || el.renderRoot || el;
     replaceTexts(target);
+    /* The observer must stay attached for the lifetime of the element: RapiDoc
+       re-renders whenever the user switches operation, and a timed disconnect
+       would leave everything rendered after that point in English. Re-entry is
+       avoided by the walker doing nothing when a string is already translated. */
+    if (el.__zhObserver) return;
     const mo = new MutationObserver(() => replaceTexts(target));
     mo.observe(target, { childList: true, subtree: true });
-    setTimeout(() => mo.disconnect(), 2000);
+    el.__zhObserver = mo;
   };
   customElements.whenDefined("rapi-doc").then(() => {
     const RD = customElements.get("rapi-doc");

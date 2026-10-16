@@ -341,7 +341,11 @@ def _request_schema() -> dict[str, Any]:
         "requestBody": {
             "required": True,
             "content": {
-                "application/json": {"schema": expand(schema)},
+                # multipart first on purpose: RapiDoc (and most viewers) default
+                # to the first declared media type, and the only way a human
+                # can "Try" a parse in a browser is to upload a file. With
+                # application/json first the Try panel offers a JSON body and
+                # no file picker at all.
                 "multipart/form-data": {
                     "schema": {
                         "type": "object",
@@ -355,6 +359,7 @@ def _request_schema() -> dict[str, Any]:
                         },
                     }
                 },
+                "application/json": {"schema": expand(schema)},
                 "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
             },
         },

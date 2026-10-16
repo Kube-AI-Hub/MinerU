@@ -351,6 +351,14 @@ class TestResponseParsing:
         return (serve_app.ASSETS_DIR / "app.mjs").read_text(encoding="utf-8")
 
     @pytest.fixture()
+    def markup(self):
+        return (serve_app.ASSETS_DIR / "index.html").read_text(encoding="utf-8")
+
+    @pytest.fixture()
+    def stylesheet(self):
+        return (serve_app.ASSETS_DIR / "index.css").read_text(encoding="utf-8")
+
+    @pytest.fixture()
     def viewer(self):
         return (serve_app.ASSETS_DIR / "source-viewer.mjs").read_text(encoding="utf-8")
 
@@ -426,6 +434,72 @@ class TestResponseParsing:
         """A click in the source has to reach the result pane."""
         assert "onSelect" in viewer
         assert "onHover" in viewer
+
+    def test_mounts_rapidoc_lazily(self, script):
+        """RapiDoc must not be in the initial HTML.
+
+        Its connectedCallback writes `width: 100vw; height: 100vh` onto the
+        parent whenever the parent measures zero, and a `display: none` section
+        always measures zero. Declared up front it forces the API tab to a full
+        viewport and breaks the page height.
+        """
+        assert "ensureRapidoc" in script
+        assert "createElement('rapi-doc')" in script
+
+    def test_clears_the_size_rapidoc_writes_to_its_parent(self, script):
+        """The stamped 100vw/100vh has to be removed after mount."""
+        assert "removeProperty('width')" in script
+        assert "removeProperty('height')" in script
+
+    def test_syncs_the_api_height_to_the_parse_tab(self, script):
+        """Both tabs must occupy the same box, or switching resizes the page."""
+        assert "syncApiHeight" in script
+
+    def test_injects_the_access_token_into_rapidoc(self, script):
+        """A token in the URL must reach the API tab, not just the Parse tab."""
+        assert "api-key-value" in script
+        assert "api-key-name" in script
+        assert "applyApiToken" in script
+
+    def test_checks_the_token_toggle_when_the_url_carries_one(self, script):
+        """Otherwise the token is silently ignored and gated actions look bare."""
+        assert "initTokenToggle" in script
+
+    def test_has_no_duplicate_ocr_controls(self, markup):
+        """Force OCR replaces the OCR-mode dropdown, as in the original WebUI.
+
+        The original exposes only `force_ocr` and maps it to ocr_mode="ocr";
+        a separate dropdown would be a second control for the same decision.
+        """
+        assert 'id="force-ocr"' in markup
+        assert 'id="ocr-mode"' not in markup
+
+    def test_tier_has_a_label_like_the_page_range(self, markup):
+        """The tier block must carry a label, matching the other fields."""
+        assert 'class="field tier-block"' in markup
+        assert 'data-i18n="tier"' in markup
+
+    def test_hidden_elements_stay_hidden(self, stylesheet):
+        """A layout rule must not keep a `hidden` element on screen.
+
+        The progress card is styled `display: flex` and starts hidden. Without a
+        `[hidden]` rule winning, an empty "最新状态" card shows before the first
+        parse.
+        """
+        assert "[hidden]" in stylesheet
+        hidden_rule = stylesheet[stylesheet.index("[hidden]") : stylesheet.index("[hidden]") + 120]
+        assert "display: none" in hidden_rule
+        assert "!important" in hidden_rule
+
+    def test_controls_grid_beats_the_pane_flex(self, stylesheet):
+        """The controls pane must use `.pane.controls` in the media query.
+
+        The element is `<div class="pane controls">` and the base `.pane` rule
+        sets display: flex later in the file. At equal specificity the later
+        rule wins, so a plain `.controls` selector loses and every control is
+        sized to its own content.
+        """
+        assert ".pane.controls" in stylesheet
 
     def test_source_viewer_loads_its_bundle_relatively(self, viewer):
         """The pdf.js bundle ships with the page, so it must resolve relatively."""

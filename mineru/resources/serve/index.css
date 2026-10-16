@@ -27,6 +27,13 @@
   box-sizing: border-box;
 }
 
+/* The `hidden` attribute must win over any layout rule. Without this, an
+   element styled `display: flex` or `grid` stays on screen after being hidden,
+   which is how an empty "最新状态" card shows up before the first parse. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--gray-25);
@@ -1050,11 +1057,13 @@ button.ghost:disabled {
   color: var(--gray-500);
 }
 
-/* API tab. RapiDoc sizes itself, so give it the same block height as the
-   preview panes to keep the page from jumping between tabs. */
+/* API tab. RapiDoc scrolls internally, so it needs a bounded height — without
+   one it grows to its full content (tens of thousands of pixels). The height is
+   synced to the Parse tab at runtime (see syncApiHeight), so switching tabs
+   never moves the page. */
 rapi-doc {
   display: block;
-  height: 720px;
+  height: 620px;
   border-radius: var(--radius-sm);
   overflow: hidden;
 }

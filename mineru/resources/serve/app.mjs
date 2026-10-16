@@ -61,6 +61,17 @@ window.MinerUSourceViewer = SourceViewer;
     return new URLSearchParams(window.location.search).get('token') || '';
   }
 
+  /* A token in the URL is the platform telling this page to use it, so the
+     checkbox starts on. Leaving it off meant the token was silently ignored and
+     every gated action looked like it had no credential at all. */
+  function initTokenToggle() {
+    var checkbox = document.getElementById('use-token');
+    if (!checkbox) return;
+    if (new URLSearchParams(window.location.search).has('token')) {
+      checkbox.checked = true;
+    }
+  }
+
   function authHeaders() {
     var value = token();
     return value ? { Authorization: 'Bearer ' + value } : {};
@@ -725,9 +736,9 @@ window.MinerUSourceViewer = SourceViewer;
     }
     var query = new URLSearchParams();
     query.set('tier', state.selectedTier);
-    /* Force OCR overrides the mode: it means "ignore the text layer", which is
-       exactly the `ocr` mode. */
-    query.set('ocr_mode', forceOcr() ? 'ocr' : document.getElementById('ocr-mode').value);
+    /* The checkbox is the only OCR control, matching the original WebUI: it
+       means "ignore the text layer", which is exactly the `ocr` mode. */
+    query.set('ocr_mode', forceOcr() ? 'ocr' : 'auto');
     var range = pageRangeValue();
     if (range) query.set('page_range', range);
     /* Ask for `zip` alongside the formats the preview needs: the result
@@ -969,9 +980,43 @@ window.MinerUSourceViewer = SourceViewer;
 
   /* ------------------------------------------------------------------- API */
 
-  function initApi() {
+  /* Create the RapiDoc element. It is built on first use, never up front: its
+     connectedCallback writes `width: 100vw; height: 100vh` onto the parent
+     whenever the parent measures zero, and a hidden section always measures
+     zero. Mounting it late means it only ever measures the visible section. */
+  function ensureRapidoc() {
+    var section = document.getElementById('section-api');
     var doc = document.getElementById('rapidoc');
-    if (!doc) return;
+    if (doc) return doc;
+
+    doc = document.createElement('rapi-doc');
+    doc.id = 'rapidoc';
+    /* Attributes are set before insertion so the element's first render already
+       has them; RapiDoc reads several of these only during connectedCallback. */
+    var attributes = {
+      'render-style': 'read',
+      theme: 'dark',
+      'bg-color': '#14215a',
+      'text-color': '#deebf6',
+      'header-color': '#1f2c6a',
+      'primary-color': '#a981f8',
+      'load-fonts': 'false',
+      'regular-font': 'Inter, PingFang SC, Microsoft YaHei, system-ui, sans-serif',
+      'mono-font': 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+      'show-header': 'false',
+      layout: 'row',
+      'show-info': 'true',
+      'allow-try': 'true',
+      'allow-authentication': 'true',
+      'allow-spec-url-load': 'false',
+      'allow-spec-file-load': 'false',
+      'allow-server-selection': 'false',
+      'allow-api-list-style-selection': 'false',
+      'heading-text': 'MinerU API'
+    };
+    Object.keys(attributes).forEach(function (name) {
+      doc.setAttribute(name, attributes[name]);
+    });
     /* RapiDoc resolves relative URLs against the page, which behind the
        platform's proxy is the engine itself. Hand it both the spec and the
        documented server explicitly so "Try" calls the engine rather than the
@@ -979,6 +1024,31 @@ window.MinerUSourceViewer = SourceViewer;
     var base = window.location.pathname.replace(/\/$/, '');
     doc.setAttribute('spec-url', './openapi.json');
     doc.setAttribute('server-url', base || '/');
+    section.appendChild(doc);
+    /* RapiDoc writes sizing onto its parent in connectedCallback. Drop it: the
+       stylesheet already sizes both, and a leftover 100vw/100vh is what made
+       the API tab a full viewport tall while the Parse tab was not. */
+    section.style.removeProperty('width');
+    section.style.removeProperty('height');
+    applyApiToken();
+    return doc;
+  }
+
+  /* RapiDoc reads `api-key-value` and attaches it to every "Try" request; the
+     value is only meaningful when the user opted in, matching the Parse tab. */
+  function applyApiToken() {
+    var doc = document.getElementById('rapidoc');
+    if (!doc) return;
+    var value = token();
+    if (value) {
+      doc.setAttribute('api-key-name', 'Authorization');
+      doc.setAttribute('api-key-location', 'header');
+      doc.setAttribute('api-key-value', 'Bearer ' + value);
+    } else {
+      doc.removeAttribute('api-key-name');
+      doc.removeAttribute('api-key-location');
+      doc.removeAttribute('api-key-value');
+    }
   }
 
   function switchTab(target) {
@@ -987,6 +1057,41 @@ window.MinerUSourceViewer = SourceViewer;
     });
     document.getElementById('section-test').classList.toggle('active', target === 'test');
     document.getElementById('section-api').classList.toggle('active', target === 'api');
+    /* Mount RapiDoc only after its section is visible: it measures the parent
+       as it connects, and a `display: none` parent measures zero, which makes it
+       stamp `width: 100vw; height: 100vh` onto the section. */
+    if (target === 'api') {
+      ensureRapidoc();
+      syncApiHeight();
+    }
+  }
+
+  /* Give the API panel the same height as the Parse panel so switching tabs
+     does not resize the page. Measured from the Parse tab rather than
+     hard-coded, because the controls wrap differently at each breakpoint. */
+  function syncApiHeight() {
+    var doc = document.getElementById('rapidoc');
+    var section = document.getElementById('section-api');
+    var test = document.getElementById('section-test');
+    if (!doc || !test || !section) return;
+    /* The Parse section is the one that is normally visible; measuring it while
+       it is hidden would read zero. */
+    var wasApi = section.classList.contains('active');
+    if (wasApi) {
+      section.classList.remove('active');
+      test.classList.add('active');
+    }
+    var target = test.getBoundingClientRect().height;
+    if (wasApi) {
+      test.classList.remove('active');
+      section.classList.add('active');
+    }
+    /* The section adds its own padding around the element, and both sections
+       carry the same padding, so subtract it to make the totals equal. */
+    var styles = getComputedStyle(section);
+    var padding = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+    var height = Math.round(target - padding);
+    if (height > 0) doc.style.height = height + 'px';
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -994,6 +1099,7 @@ window.MinerUSourceViewer = SourceViewer;
     renderTier();
     buildDownloadMenu();
     initPageRange();
+    initTokenToggle();
 
     document.getElementById('tier').addEventListener('input', renderTier);
     document.getElementById('submit').addEventListener('click', submit);
@@ -1016,7 +1122,12 @@ window.MinerUSourceViewer = SourceViewer;
     document.addEventListener('click', function () {
       document.getElementById('download-menu').hidden = true;
     });
-    document.getElementById('use-token').addEventListener('change', refreshDownloadMenu);
+    document.getElementById('use-token').addEventListener('change', function () {
+      refreshDownloadMenu();
+      /* The API tab sends the same credential, so it has to follow the toggle
+         rather than keeping whatever it was initialised with. */
+      applyApiToken();
+    });
 
     document.getElementById('file').addEventListener('change', function () {
       var file = selectedFile();
@@ -1043,6 +1154,16 @@ window.MinerUSourceViewer = SourceViewer;
     });
 
     loadDemos();
-    initApi();
+    /* RapiDoc is mounted lazily by switchTab; a deep link straight to #post-/v1/...
+       opens the API tab, so honour it here. */
+    if (document.querySelector('.tab[data-target="api"]').classList.contains('active')) {
+      ensureRapidoc();
+      syncApiHeight();
+    }
+    /* The Parse tab's height changes when the controls wrap or the progress card
+       appears, so keep the API panel in step rather than syncing once. */
+    window.addEventListener('resize', function () {
+      if (document.getElementById('rapidoc')) syncApiHeight();
+    });
   });
 })();
