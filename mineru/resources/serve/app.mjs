@@ -1108,7 +1108,10 @@ window.MinerUSourceViewer = SourceViewer;
        the API tab a full viewport tall while the Parse tab was not. */
     section.style.removeProperty('width');
     section.style.removeProperty('height');
-    loadSpec();
+    /* applyApiToken, not loadSpec: it sets the api-key attributes AND reloads
+       the spec. Calling loadSpec alone left `api-key-value` unset, so the code
+       samples carried the token while "Try" went out unauthenticated. */
+    applyApiToken();
     return doc;
   }
 

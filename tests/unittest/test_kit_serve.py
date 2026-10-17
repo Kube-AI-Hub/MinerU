@@ -871,6 +871,18 @@ class TestResponseParsing:
         # The reload lives in applyApiToken, which the toggle already calls.
         assert "applyApiToken" in script
 
+    def test_mounting_rapidoc_applies_the_token(self, script):
+        """Mounting must go through applyApiToken, not just loadSpec.
+
+        Calling loadSpec alone loads the localized spec but leaves
+        `api-key-value` unset: the code samples then show the token while "Try"
+        goes out without it, and the API returns 401 invalid_api_key. This is a
+        regression that shipped once, so pin the call.
+        """
+        mount = script[script.index("section.appendChild(doc)") :]
+        mount = mount[: mount.index("return doc;")]
+        assert "applyApiToken()" in mount
+
     def test_hides_the_overview_and_authentication_blocks(self, script):
         """Every operation authenticates the same way; the reader wants the call."""
         assert "'show-info': 'false'" in script
