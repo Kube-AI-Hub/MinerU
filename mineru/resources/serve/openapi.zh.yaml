@@ -1,0 +1,3382 @@
+openapi: 3.1.0
+info:
+  title: MinerU API
+  version: 1.0.0
+paths:
+  /v1/health:
+    get:
+      tags:
+      - Health
+      summary: 健康检查
+      description: 报告就绪状态与本服务的可用能力。
+      operationId: get_health_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: 'import requests
+
+
+          url = "SERVER_URL/v1/health"
+
+          response = requests.get(url)
+
+
+          print(response.status_code)
+
+          print(response.json())'
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/health\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n});\n\n\
+          const data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: curl -X GET 'SERVER_URL/v1/health'
+  /v1/models:
+    get:
+      tags:
+      - Models
+      summary: 列出模型
+      description: 列出本服务接受的模型 ID。
+      operationId: list_models_v1_models_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelListResponse'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: 'import requests
+
+
+          url = "SERVER_URL/v1/models"
+
+          response = requests.get(url)
+
+
+          print(response.status_code)
+
+          print(response.json())'
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/models\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n});\n\n\
+          const data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: curl -X GET 'SERVER_URL/v1/models'
+  /v1/models/{model}:
+    get:
+      tags:
+      - Models
+      summary: 获取模型
+      description: 按 ID 查询一个已公布的模型。
+      operationId: get_model_v1_models__model__get
+      security: []
+      parameters:
+      - name: model
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Model ID
+          examples:
+          - mineru-4.0.12
+          title: Model
+        description: 模型 ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelInfo'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: 'import requests
+
+
+          url = "SERVER_URL/v1/models/{model}"
+
+          response = requests.get(url)
+
+
+          print(response.status_code)
+
+          print(response.json())'
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/models/{model}\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n\
+          });\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: curl -X GET 'SERVER_URL/v1/models/{model}'
+  /v1/tiers:
+    get:
+      tags:
+      - Tiers
+      summary: 列出解析等级
+      description: 列出本服务可提供的解析等级。
+      operationId: list_tiers_v1_tiers_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TierListResponse'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: 'import requests
+
+
+          url = "SERVER_URL/v1/tiers"
+
+          response = requests.get(url)
+
+
+          print(response.status_code)
+
+          print(response.json())'
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tiers\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n});\n\n\
+          const data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: curl -X GET 'SERVER_URL/v1/tiers'
+  /v1/uploads:
+    post:
+      tags:
+      - Uploads
+      summary: 创建上传
+      description: 创建上传会话，然后把字节 PUT 到返回的 URL。
+      operationId: create_upload_v1_uploads_post
+      requestBody:
+        description: 声明要上传的文件；字节在随后的 PUT 中发送。
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUploadRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request Entity Too Large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\"\
+          ,\n}\npayload = {\n    \"filename\": \"string\",\n    \"bytes\": 0,\n    \"mime_type\": \"string\",\n    \"purpose\"\
+          : \"parse\",\n    \"sha256sum\": \"string\",\n    \"expires_after\": {\n        \"anchor\": \"created_at\",\n  \
+          \      \"seconds\": 3600\n    }\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\n\nprint(response.status_code)\n\
+          print(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads\";\nconst payload = {\n  \"filename\": \"string\",\n  \"bytes\": 0,\n\
+          \  \"mime_type\": \"string\",\n  \"purpose\": \"parse\",\n  \"sha256sum\": \"string\",\n  \"expires_after\": {\n\
+          \    \"anchor\": \"created_at\",\n    \"seconds\": 3600\n  }\n};\n\nconst response = await fetch(url, {\n  method:\
+          \ \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\",\n    Authorization: \"Bearer YOUR_TOKEN\"\
+          ,\n  },\n  body: JSON.stringify(payload),\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/uploads' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n  -H \"Content-Type:\
+          \ application/json\" \\\n  -d '{\"filename\": \"string\", \"bytes\": 0, \"mime_type\": \"string\", \"purpose\":\
+          \ \"parse\", \"sha256sum\": \"string\", \"expires_after\": {\"anchor\": \"created_at\", \"seconds\": 3600}}'"
+  /v1/uploads/{upload_id}:
+    get:
+      tags:
+      - Uploads
+      summary: 获取上传
+      description: 按 ID 查询上传会话。
+      operationId: get_upload_v1_uploads__upload_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Upload ID (upload_...)
+          examples:
+          - upload_3f9c2b1a
+          title: Upload Id
+        description: 上传 ID（upload_...）
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads/{upload_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads/{upload_id}\";\n\nconst response = await fetch(url, {\n  method: \"GET\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/uploads/{upload_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/uploads/{upload_id}/content:
+    put:
+      tags:
+      - Uploads
+      summary: 上传内容
+      description: 为上传会话写入原始字节（兼容 OpenAI）。
+      operationId: upload_content_v1_uploads__upload_id__content_put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Upload ID
+          examples:
+          - upload_3f9c2b1a
+          title: Upload Id
+        description: 上传 ID
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              contentMediaType: application/octet-stream
+              description: Raw file bytes for this upload session.
+              title: Data
+        description: 本次上传会话的原始文件字节。
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Request Entity Too Large
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads/{upload_id}/content\"\nheaders = {\n    \"Authorization\"\
+          : \"Bearer YOUR_TOKEN\",\n    \"Content-Type\": \"application/octet-stream\",\n}\nwith open(\"document.pdf\", \"\
+          rb\") as source:\n    response = requests.put(url, data=source, headers=headers)\n\nprint(response.status_code)\n\
+          print(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads/{upload_id}/content\";\nconst file = document.querySelector('input[type=\"\
+          file\"]').files[0];\n\nconst response = await fetch(url, {\n  method: \"PUT\",\n  headers: {\n    Authorization:\
+          \ \"Bearer YOUR_TOKEN\",\n    \"Content-Type\": \"application/octet-stream\",\n  },\n  body: file,\n});\n\nconst\
+          \ data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X PUT 'SERVER_URL/v1/uploads/{upload_id}/content' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n\
+          \  -H \"Content-Type: application/octet-stream\" \\\n  --data-binary @document.pdf"
+  /v1/uploads/{upload_id}/complete:
+    post:
+      tags:
+      - Uploads
+      summary: 完成上传
+      description: 完成上传并创建 File 对象。
+      operationId: complete_upload_v1_uploads__upload_id__complete_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Upload ID
+          examples:
+          - upload_3f9c2b1a
+          title: Upload Id
+        description: 上传 ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - $ref: '#/components/schemas/CompleteUploadRequest'
+              - type: 'null'
+              title: Body
+        required: false
+        description: 可选：在上传定稿前校验已上传内容的 SHA-256。
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Request Entity Too Large
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads/{upload_id}/complete\"\nheaders = {\n    \"Authorization\"\
+          : \"Bearer YOUR_TOKEN\",\n}\npayload = {\n    \"sha256sum\": \"string\"\n}\n\nresponse = requests.post(url, json=payload,\
+          \ headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads/{upload_id}/complete\";\nconst payload = {\n  \"sha256sum\": \"string\"\
+          \n};\n\nconst response = await fetch(url, {\n  method: \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\"\
+          ,\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n  body: JSON.stringify(payload),\n});\n\nconst data = await\
+          \ response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/uploads/{upload_id}/complete' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\
+          \n  -H \"Content-Type: application/json\" \\\n  -d '{\"sha256sum\": \"string\"}'"
+  /v1/uploads/{upload_id}/cancel:
+    post:
+      tags:
+      - Uploads
+      summary: 取消上传
+      description: 取消进行中的上传。
+      operationId: cancel_upload_v1_uploads__upload_id__cancel_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Upload ID
+          examples:
+          - upload_3f9c2b1a
+          title: Upload Id
+        description: 上传 ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads/{upload_id}/cancel\"\nheaders = {\n    \"Authorization\"\
+          : \"Bearer YOUR_TOKEN\",\n}\nresponse = requests.post(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads/{upload_id}/cancel\";\n\nconst response = await fetch(url, {\n  method:\
+          \ \"POST\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\n\
+          console.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/uploads/{upload_id}/cancel' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/files:
+    get:
+      tags:
+      - Files
+      summary: 列出文件
+      description: 列出当前租户的文件。
+      operationId: list_files_v1_files_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: after
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Cursor: last_id from previous page'
+          examples:
+          - file-0cf8b284ab9934cb7dfb68e0
+          title: After
+        description: 游标：上一页的 last_id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          description: Items per page
+          examples:
+          - 100
+          default: 100
+          title: Limit
+        description: 每页条数
+      - name: order
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          description: Sort by created_at
+          examples:
+          - desc
+          default: desc
+          title: Order
+        description: 按 created_at 排序
+      - name: purpose
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - parse
+            - parse_output
+            - input_image
+            type: string
+          - type: 'null'
+          description: Only return files with this purpose
+          examples:
+          - parse_output
+          title: Purpose
+        description: 只返回该用途的文件
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/files?after=file-0cf8b284ab9934cb7dfb68e0&limit=100&order=desc&purpose=parse_output\"\
+          \nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\
+          \nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/files?after=file-0cf8b284ab9934cb7dfb68e0&limit=100&order=desc&purpose=parse_output\"\
+          ;\n\nconst response = await fetch(url, {\n  method: \"GET\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\"\
+          ,\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/files?after=file-0cf8b284ab9934cb7dfb68e0&limit=100&order=desc&purpose=parse_output'\
+          \ \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/files/{file_id}:
+    get:
+      tags:
+      - Files
+      summary: 获取文件
+      description: 查询文件元数据。
+      operationId: get_file_v1_files__file_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: File ID (file-...)
+          examples:
+          - file-0cf8b284ab9934cb7dfb68e0
+          title: File Id
+        description: 文件 ID（file-...）
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileObjectModel'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/files/{file_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/files/{file_id}\";\n\nconst response = await fetch(url, {\n  method: \"GET\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/files/{file_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+    delete:
+      tags:
+      - Files
+      summary: 删除文件
+      description: 从当前租户视图中删除文件。
+      operationId: delete_file_v1_files__file_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: File ID
+          examples:
+          - file-0cf8b284ab9934cb7dfb68e0
+          title: File Id
+        description: 文件 ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDeletionResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/files/{file_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.delete(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/files/{file_id}\";\n\nconst response = await fetch(url, {\n  method: \"DELETE\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X DELETE 'SERVER_URL/v1/files/{file_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/files/{file_id}/content:
+    get:
+      tags:
+      - Files
+      summary: 下载文件内容
+      description: 下载解析产物内容。
+      operationId: get_file_content_v1_files__file_id__content_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: File ID
+          examples:
+          - file-0cf8b284ab9934cb7dfb68e0
+          title: File Id
+        description: 文件 ID
+      responses:
+        '200':
+          description: File content
+          content:
+            application/json:
+              schema: {}
+        '302':
+          description: Redirect to CDN (cloud mode)
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/files/{file_id}/content\"\nheaders = {\n    \"Authorization\": \"\
+          Bearer YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/files/{file_id}/content\";\n\nconst response = await fetch(url, {\n  method:\
+          \ \"GET\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\n\
+          console.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/files/{file_id}/content' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/parse/jobs:
+    post:
+      tags:
+      - Jobs
+      summary: 创建任务
+      description: 通过共享任务服务创建 V1 任务，保持既有响应结构。
+      operationId: create_job_v1_parse_jobs_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJobRequest'
+        description: 要解析的文档、其来源，以及使用的档位与输出格式。
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAsyncResponse'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Too Many Requests
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/parse/jobs\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\"\
+          ,\n}\npayload = {\n    \"files\": [\n        {\n            \"source\": {\n                \"type\": \"file_id\"\
+          ,\n                \"file_id\": \"file-0cf8b284ab9934cb7dfb68e0\"\n            },\n            \"page_range\": \"\
+          1-5,8,r3-r1\"\n        }\n    ],\n    \"tier\": \"standard\",\n    \"ocr_mode\": \"auto\",\n    \"output_formats\"\
+          : [\n        \"markdown\",\n        \"middle_json\"\n    ],\n    \"callback\": {\n        \"url\": \"string\",\n\
+          \        \"secret\": \"string\"\n    }\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\n\nprint(response.status_code)\n\
+          print(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/parse/jobs\";\nconst payload = {\n  \"files\": [\n    {\n      \"source\": {\n\
+          \        \"type\": \"file_id\",\n        \"file_id\": \"file-0cf8b284ab9934cb7dfb68e0\"\n      },\n      \"page_range\"\
+          : \"1-5,8,r3-r1\"\n    }\n  ],\n  \"tier\": \"standard\",\n  \"ocr_mode\": \"auto\",\n  \"output_formats\": [\n\
+          \    \"markdown\",\n    \"middle_json\"\n  ],\n  \"callback\": {\n    \"url\": \"string\",\n    \"secret\": \"string\"\
+          \n  }\n};\n\nconst response = await fetch(url, {\n  method: \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\"\
+          ,\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n  body: JSON.stringify(payload),\n});\n\nconst data = await\
+          \ response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/parse/jobs' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n  -H \"Content-Type:\
+          \ application/json\" \\\n  -d '{\"files\": [{\"source\": {\"type\": \"file_id\", \"file_id\": \"file-0cf8b284ab9934cb7dfb68e0\"\
+          }, \"page_range\": \"1-5,8,r3-r1\"}], \"tier\": \"standard\", \"ocr_mode\": \"auto\", \"output_formats\": [\"markdown\"\
+          , \"middle_json\"], \"callback\": {\"url\": \"string\", \"secret\": \"string\"}}'"
+    get:
+      tags:
+      - Jobs
+      summary: 列出任务
+      description: 列出当前租户的任务。
+      operationId: list_jobs_v1_parse_jobs_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by status (comma-separated)
+          examples:
+          - completed,failed
+          title: Status
+        description: 按状态过滤（逗号分隔）
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Items per page
+          examples:
+          - 20
+          default: 20
+          title: Limit
+        description: 每页条数
+      - name: after
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Pagination cursor (last_id from previous page)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: After
+        description: 分页游标（上一页的 last_id）
+      - name: order
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          description: Sort by created_at
+          examples:
+          - desc
+          default: desc
+          title: Order
+        description: 按 created_at 排序
+      - name: created_after
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: ISO-8601 lower bound for created_at
+          examples:
+          - '2026-01-01T00:00:00Z'
+          title: Created After
+        description: created_at 的 ISO-8601 下界
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/parse/jobs?status=completed%2Cfailed&limit=20&after=job_1324359f69a657f22b833071&order=desc&created_after=2026-01-01T00%3A00%3A00Z\"\
+          \nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\
+          \nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/parse/jobs?status=completed%2Cfailed&limit=20&after=job_1324359f69a657f22b833071&order=desc&created_after=2026-01-01T00%3A00%3A00Z\"\
+          ;\n\nconst response = await fetch(url, {\n  method: \"GET\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\"\
+          ,\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/parse/jobs?status=completed%2Cfailed&limit=20&after=job_1324359f69a657f22b833071&order=desc&created_after=2026-01-01T00%3A00%3A00Z'\
+          \ \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/parse/jobs/{job_id}:
+    get:
+      tags:
+      - Jobs
+      summary: 获取任务
+      description: 查询任务的当前状态与结果。
+      operationId: get_job_v1_parse_jobs__job_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Job ID (job_...)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Job Id
+        description: 任务 ID（job_...）
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAsyncResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/parse/jobs/{job_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/parse/jobs/{job_id}\";\n\nconst response = await fetch(url, {\n  method: \"GET\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/parse/jobs/{job_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+    delete:
+      tags:
+      - Jobs
+      summary: 取消任务
+      description: 取消排队中或运行中的任务。
+      operationId: cancel_job_v1_parse_jobs__job_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Job ID
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Job Id
+        description: 任务 ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCancelResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/parse/jobs/{job_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.delete(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/parse/jobs/{job_id}\";\n\nconst response = await fetch(url, {\n  method: \"DELETE\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X DELETE 'SERVER_URL/v1/parse/jobs/{job_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/usage:
+    get:
+      tags:
+      - Usage
+      summary: 获取用量
+      description: 查询当前用量与限额。
+      operationId: get_usage_v1_usage_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageResponse'
+      security:
+      - HTTPBearer: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/usage\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\"\
+          ,\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/usage\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n  headers:\
+          \ {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/usage' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/tasks:
+    post:
+      tags:
+      - Tasks
+      summary: 创建任务
+      description: 提交任务后立即返回公共 ID；缓存命中时不读取请求主体。
+      operationId: create_task_v1_tasks_post
+      security:
+      - HTTPBearer: []
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+      requestBody:
+        required: true
+        description: 要解析的文档。三种方式任选：带 `files` 字段的 multipart/form-data；单个原始文件用 application/octet-stream（配合查询参数）；或带 CreateJobRequest
+          主体的 application/json。
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - files
+              properties:
+                files:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: string
+                    format: binary
+                  description: One or more documents to parse, in order.
+          application/json:
+            schema:
+              additionalProperties: false
+              description: Submit documents for parsing.
+              properties:
+                files:
+                  description: Documents to parse, in order.
+                  items:
+                    additionalProperties: false
+                    description: One document to parse, with an optional page selection.
+                    properties:
+                      source:
+                        description: Where the document comes from; `type` selects the source variant.
+                        discriminator:
+                          propertyName: type
+                        oneOf:
+                        - additionalProperties: false
+                          description: Reference bytes that were uploaded earlier.
+                          properties:
+                            type:
+                              const: file_id
+                              default: file_id
+                              description: Selects the file_id source variant.
+                              title: Type
+                              type: string
+                            file_id:
+                              description: ID of a completed upload's File object.
+                              title: File Id
+                              type: string
+                          required:
+                          - file_id
+                          title: FileIdSource
+                          type: object
+                        - additionalProperties: false
+                          description: Let the server fetch the document itself.
+                          properties:
+                            type:
+                              const: url
+                              default: url
+                              description: Selects the url source variant.
+                              title: Type
+                              type: string
+                            url:
+                              description: HTTP(S) URL the server downloads before parsing.
+                              title: Url
+                              type: string
+                          required:
+                          - url
+                          title: UrlSource
+                          type: object
+                        - additionalProperties: false
+                          description: Carry the document in the request body as base64.
+                          properties:
+                            type:
+                              const: inline
+                              default: inline
+                              description: Selects the inline source variant.
+                              title: Type
+                              type: string
+                            name:
+                              description: File name for the inline content; the suffix selects the parser.
+                              minLength: 1
+                              title: Name
+                              type: string
+                            data:
+                              description: Base64-encoded file content.
+                              minLength: 1
+                              title: Data
+                              type: string
+                          required:
+                          - name
+                          - data
+                          title: InlineSource
+                          type: object
+                        - additionalProperties: false
+                          description: Read a path on the server's own filesystem.
+                          properties:
+                            type:
+                              const: local
+                              default: local
+                              description: Selects the local source variant.
+                              title: Type
+                              type: string
+                            path:
+                              description: Path on the server; only accepted when local sources are enabled.
+                              minLength: 1
+                              title: Path
+                              type: string
+                          required:
+                          - path
+                          title: LocalSource
+                          type: object
+                        title: Source
+                      page_range:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        description: 'PDF page selection: 1-based inclusive ranges, e.g. ''1-5,8,r3-r1''; ''r1'' is the last
+                          page and ''all'' selects every page. Blank means unspecified. Selections are sorted and deduplicated;
+                          out-of-bounds pages are omitted. Reversed ranges, ''~'' and negative page numbers are invalid.'
+                        examples:
+                        - 1-5,8,r3-r1
+                        - all
+                        title: Page Range
+                    required:
+                    - source
+                    title: JobFileEntry
+                    type: object
+                  maxItems: 100
+                  minItems: 1
+                  title: Files
+                  type: array
+                tier:
+                  anyOf:
+                  - enum:
+                    - flash
+                    - basic
+                    - standard
+                    - advanced
+                    type: string
+                  - type: 'null'
+                  description: 'Quality tier: flash, basic, standard or advanced. Omit to use the server''s default.'
+                  examples:
+                  - standard
+                  title: Tier
+                ocr_mode:
+                  default: auto
+                  description: 'OCR mode for this parse job: auto-detect, native text, or forced OCR.'
+                  enum:
+                  - auto
+                  - txt
+                  - ocr
+                  examples:
+                  - auto
+                  title: Ocr Mode
+                  type: string
+                output_formats:
+                  default:
+                  - markdown
+                  description: 'Artifacts to produce: markdown, middle_json, structured_content, zip.'
+                  examples:
+                  - - markdown
+                    - middle_json
+                  items:
+                    type: string
+                  title: Output Formats
+                  type: array
+                callback:
+                  anyOf:
+                  - additionalProperties: false
+                    description: Where to deliver a webhook when the job reaches a terminal state.
+                    properties:
+                      url:
+                        description: HTTP(S) URL the server posts the finished job to.
+                        title: Url
+                        type: string
+                      secret:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        description: Shared secret used to sign the callback.
+                        title: Secret
+                    required:
+                    - url
+                    title: CallbackConfig
+                    type: object
+                  - type: 'null'
+                  description: Webhook to call when the job finishes; local servers reject it.
+              required:
+              - files
+              title: CreateJobRequest
+              type: object
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+            description: Raw file bytes; `filename` is required as a query parameter.
+      parameters:
+      - name: tier
+        in: query
+        required: false
+        description: 质量档位：flash、basic、standard 或 advanced。省略则使用服务端默认值。
+        schema:
+          anyOf:
+          - enum:
+            - flash
+            - basic
+            - standard
+            - advanced
+            type: string
+          - type: 'null'
+          examples:
+          - standard
+          title: Tier
+      - name: ocr_mode
+        in: query
+        required: false
+        description: OCR 模式：自动判断、仅用文本层，或强制 OCR。
+        schema:
+          default: auto
+          enum:
+          - auto
+          - txt
+          - ocr
+          examples:
+          - auto
+          title: Ocr Mode
+          type: string
+      - name: page_range
+        in: query
+        required: false
+        description: PDF 页码选择：1 起始的闭区间，例如 '1-5,8,r3-r1'；'r1' 表示最后一页，'all' 表示全部页面。留空表示不指定。选择会排序去重，越界页会被忽略。反向区间、'~' 与负数页码无效。
+        schema:
+          default: ''
+          examples:
+          - 1-5,8,r3-r1
+          - all
+          title: Page Range
+          type: string
+      - name: output_formats
+        in: query
+        required: false
+        description: 要产出的产物：markdown、middle_json、structured_content、zip。
+        schema:
+          examples:
+          - - markdown
+            - structured_content
+          items:
+            type: string
+          title: Output Formats
+          type: array
+      - name: filename
+        in: query
+        required: false
+        description: 仅原始字节上传：文件名，其后缀决定使用哪个解析器。
+        schema:
+          anyOf:
+          - minLength: 1
+            type: string
+          - type: 'null'
+          examples:
+          - document.pdf
+          title: Filename
+      - name: sha256sum
+        in: query
+        required: false
+        description: 仅原始字节上传：小写十六进制 SHA-256，相同的字节可被复用。
+        schema:
+          anyOf:
+          - pattern: ^[a-f0-9]{64}$
+            type: string
+          - type: 'null'
+          examples:
+          - 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+          title: Sha256Sum
+      - name: Content-Length
+        in: header
+        required: false
+        description: application/octet-stream 必填；必须与实际文件字节数一致。
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 209715200
+          examples:
+          - 1048576
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/tasks?tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content\"\
+          \nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nfiles = {\"files\": (\"document.pdf\", open(\"\
+          document.pdf\", \"rb\"), \"application/pdf\")}\n\nresponse = requests.post(url, files=files, headers=headers)\n\n\
+          print(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tasks?tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content\"\
+          ;\nconst form = new FormData();\nform.append(\"files\", fileInput.files[0], \"document.pdf\");\n\nconst response\
+          \ = await fetch(url, {\n  method: \"POST\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n  body:\
+          \ form,\n});\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/tasks?tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content'\
+          \ \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n  -F \"files=@document.pdf\""
+  /v1/tasks/{task_id}:
+    get:
+      tags:
+      - Tasks
+      summary: 获取任务
+      description: 查询与 V1 任务共用的任务记录。
+      operationId: get_task_v1_tasks__task_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Task ID (job_...)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Task Id
+        description: 任务 ID（job_...）
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/tasks/{task_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tasks/{task_id}\";\n\nconst response = await fetch(url, {\n  method: \"GET\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/tasks/{task_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+    delete:
+      tags:
+      - Tasks
+      summary: 取消任务
+      description: 通过已有的后台取消机制取消任务。
+      operationId: cancel_task_v1_tasks__task_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Task ID (job_...)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Task Id
+        description: 任务 ID（job_...）
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/tasks/{task_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.delete(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tasks/{task_id}\";\n\nconst response = await fetch(url, {\n  method: \"DELETE\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X DELETE 'SERVER_URL/v1/tasks/{task_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/tasks/{task_id}/result:
+    get:
+      tags:
+      - Tasks
+      summary: 获取结果
+      description: 按任务终态返回内联 JSON 或产物压缩包。
+      operationId: get_result_v1_tasks__task_id__result_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Task ID (job_...)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Task Id
+        description: 任务 ID（job_...）
+      - name: response_format
+        in: query
+        required: false
+        schema:
+          enum:
+          - json
+          - zip
+          type: string
+          description: 'Result shape: "json" inlines the content, "zip" returns the artifact archive.'
+          examples:
+          - json
+          default: json
+          title: Response Format
+        description: 结果形态："json" 内联内容，"zip" 返回产物压缩包。
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResultResponse'
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+          description: Accepted
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/tasks/{task_id}/result?response_format=json\"\nheaders = {\n   \
+          \ \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\n\
+          print(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tasks/{task_id}/result?response_format=json\";\n\nconst response = await fetch(url,\
+          \ {\n  method: \"GET\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await\
+          \ response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/tasks/{task_id}/result?response_format=json' \\\n  -H \"Authorization: Bearer\
+          \ YOUR_TOKEN\""
+  /v1/file_parse:
+    post:
+      tags:
+      - Tasks
+      summary: 文件解析
+      description: 同步包装共享异步任务；等待超时不会取消后台工作。
+      operationId: file_parse_v1_file_parse_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: response_format
+        in: query
+        required: false
+        schema:
+          enum:
+          - json
+          - zip
+          type: string
+          description: 'Result shape: "json" inlines the content, "zip" returns the artifact archive.'
+          examples:
+          - json
+          default: json
+          title: Response Format
+        description: 结果形态："json" 内联内容，"zip" 返回产物压缩包。
+      - name: wait_timeout
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 3600
+          minimum: 1
+          description: Seconds to wait for the job before returning its current status; the job keeps running.
+          examples:
+          - 300
+          default: 300
+          title: Wait Timeout
+        description: 等待任务完成的秒数；超时后返回当前状态，任务继续执行。
+      - name: tier
+        in: query
+        required: false
+        description: 质量档位：flash、basic、standard 或 advanced。省略则使用服务端默认值。
+        schema:
+          anyOf:
+          - enum:
+            - flash
+            - basic
+            - standard
+            - advanced
+            type: string
+          - type: 'null'
+          examples:
+          - standard
+          title: Tier
+      - name: ocr_mode
+        in: query
+        required: false
+        description: OCR 模式：自动判断、仅用文本层，或强制 OCR。
+        schema:
+          default: auto
+          enum:
+          - auto
+          - txt
+          - ocr
+          examples:
+          - auto
+          title: Ocr Mode
+          type: string
+      - name: page_range
+        in: query
+        required: false
+        description: PDF 页码选择：1 起始的闭区间，例如 '1-5,8,r3-r1'；'r1' 表示最后一页，'all' 表示全部页面。留空表示不指定。选择会排序去重，越界页会被忽略。反向区间、'~' 与负数页码无效。
+        schema:
+          default: ''
+          examples:
+          - 1-5,8,r3-r1
+          - all
+          title: Page Range
+          type: string
+      - name: output_formats
+        in: query
+        required: false
+        description: 要产出的产物：markdown、middle_json、structured_content、zip。
+        schema:
+          examples:
+          - - markdown
+            - structured_content
+          items:
+            type: string
+          title: Output Formats
+          type: array
+      - name: filename
+        in: query
+        required: false
+        description: 仅原始字节上传：文件名，其后缀决定使用哪个解析器。
+        schema:
+          anyOf:
+          - minLength: 1
+            type: string
+          - type: 'null'
+          examples:
+          - document.pdf
+          title: Filename
+      - name: sha256sum
+        in: query
+        required: false
+        description: 仅原始字节上传：小写十六进制 SHA-256，相同的字节可被复用。
+        schema:
+          anyOf:
+          - pattern: ^[a-f0-9]{64}$
+            type: string
+          - type: 'null'
+          examples:
+          - 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+          title: Sha256Sum
+      - name: Content-Length
+        in: header
+        required: false
+        description: application/octet-stream 必填；必须与实际文件字节数一致。
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 209715200
+          examples:
+          - 1048576
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResultResponse'
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+          description: Accepted
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      requestBody:
+        required: true
+        description: 要解析的文档。三种方式任选：带 `files` 字段的 multipart/form-data；单个原始文件用 application/octet-stream（配合查询参数）；或带 CreateJobRequest
+          主体的 application/json。
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - files
+              properties:
+                files:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: string
+                    format: binary
+                  description: One or more documents to parse, in order.
+          application/json:
+            schema:
+              additionalProperties: false
+              description: Submit documents for parsing.
+              properties:
+                files:
+                  description: Documents to parse, in order.
+                  items:
+                    additionalProperties: false
+                    description: One document to parse, with an optional page selection.
+                    properties:
+                      source:
+                        description: Where the document comes from; `type` selects the source variant.
+                        discriminator:
+                          propertyName: type
+                        oneOf:
+                        - additionalProperties: false
+                          description: Reference bytes that were uploaded earlier.
+                          properties:
+                            type:
+                              const: file_id
+                              default: file_id
+                              description: Selects the file_id source variant.
+                              title: Type
+                              type: string
+                            file_id:
+                              description: ID of a completed upload's File object.
+                              title: File Id
+                              type: string
+                          required:
+                          - file_id
+                          title: FileIdSource
+                          type: object
+                        - additionalProperties: false
+                          description: Let the server fetch the document itself.
+                          properties:
+                            type:
+                              const: url
+                              default: url
+                              description: Selects the url source variant.
+                              title: Type
+                              type: string
+                            url:
+                              description: HTTP(S) URL the server downloads before parsing.
+                              title: Url
+                              type: string
+                          required:
+                          - url
+                          title: UrlSource
+                          type: object
+                        - additionalProperties: false
+                          description: Carry the document in the request body as base64.
+                          properties:
+                            type:
+                              const: inline
+                              default: inline
+                              description: Selects the inline source variant.
+                              title: Type
+                              type: string
+                            name:
+                              description: File name for the inline content; the suffix selects the parser.
+                              minLength: 1
+                              title: Name
+                              type: string
+                            data:
+                              description: Base64-encoded file content.
+                              minLength: 1
+                              title: Data
+                              type: string
+                          required:
+                          - name
+                          - data
+                          title: InlineSource
+                          type: object
+                        - additionalProperties: false
+                          description: Read a path on the server's own filesystem.
+                          properties:
+                            type:
+                              const: local
+                              default: local
+                              description: Selects the local source variant.
+                              title: Type
+                              type: string
+                            path:
+                              description: Path on the server; only accepted when local sources are enabled.
+                              minLength: 1
+                              title: Path
+                              type: string
+                          required:
+                          - path
+                          title: LocalSource
+                          type: object
+                        title: Source
+                      page_range:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        description: 'PDF page selection: 1-based inclusive ranges, e.g. ''1-5,8,r3-r1''; ''r1'' is the last
+                          page and ''all'' selects every page. Blank means unspecified. Selections are sorted and deduplicated;
+                          out-of-bounds pages are omitted. Reversed ranges, ''~'' and negative page numbers are invalid.'
+                        examples:
+                        - 1-5,8,r3-r1
+                        - all
+                        title: Page Range
+                    required:
+                    - source
+                    title: JobFileEntry
+                    type: object
+                  maxItems: 100
+                  minItems: 1
+                  title: Files
+                  type: array
+                tier:
+                  anyOf:
+                  - enum:
+                    - flash
+                    - basic
+                    - standard
+                    - advanced
+                    type: string
+                  - type: 'null'
+                  description: 'Quality tier: flash, basic, standard or advanced. Omit to use the server''s default.'
+                  examples:
+                  - standard
+                  title: Tier
+                ocr_mode:
+                  default: auto
+                  description: 'OCR mode for this parse job: auto-detect, native text, or forced OCR.'
+                  enum:
+                  - auto
+                  - txt
+                  - ocr
+                  examples:
+                  - auto
+                  title: Ocr Mode
+                  type: string
+                output_formats:
+                  default:
+                  - markdown
+                  description: 'Artifacts to produce: markdown, middle_json, structured_content, zip.'
+                  examples:
+                  - - markdown
+                    - middle_json
+                  items:
+                    type: string
+                  title: Output Formats
+                  type: array
+                callback:
+                  anyOf:
+                  - additionalProperties: false
+                    description: Where to deliver a webhook when the job reaches a terminal state.
+                    properties:
+                      url:
+                        description: HTTP(S) URL the server posts the finished job to.
+                        title: Url
+                        type: string
+                      secret:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        description: Shared secret used to sign the callback.
+                        title: Secret
+                    required:
+                    - url
+                    title: CallbackConfig
+                    type: object
+                  - type: 'null'
+                  description: Webhook to call when the job finishes; local servers reject it.
+              required:
+              - files
+              title: CreateJobRequest
+              type: object
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+            description: Raw file bytes; `filename` is required as a query parameter.
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/file_parse?response_format=json&wait_timeout=300&tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content\"\
+          \nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nfiles = {\"files\": (\"document.pdf\", open(\"\
+          document.pdf\", \"rb\"), \"application/pdf\")}\n\nresponse = requests.post(url, files=files, headers=headers)\n\n\
+          print(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/file_parse?response_format=json&wait_timeout=300&tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content\"\
+          ;\nconst form = new FormData();\nform.append(\"files\", fileInput.files[0], \"document.pdf\");\n\nconst response\
+          \ = await fetch(url, {\n  method: \"POST\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n  body:\
+          \ form,\n});\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/file_parse?response_format=json&wait_timeout=300&tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content'\
+          \ \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n  -F \"files=@document.pdf\""
+components:
+  schemas:
+    CallbackConfig:
+      properties:
+        url:
+          type: string
+          title: Url
+          description: 任务完成后服务端回调的 HTTP(S) URL。
+        secret:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Secret
+          description: 用于签名的回调共享密钥。
+      additionalProperties: false
+      type: object
+      required:
+      - url
+      title: CallbackConfig
+      description: Where to deliver a webhook when the job reaches a terminal state.
+    CompleteUploadRequest:
+      properties:
+        sha256sum:
+          anyOf:
+          - type: string
+            pattern: ^[a-f0-9]{64}$
+          - type: 'null'
+          title: Sha256Sum
+          description: 已上传字节的小写十六进制 SHA-256；不匹配则拒绝该上传。
+      additionalProperties: false
+      type: object
+      title: CompleteUploadRequest
+      description: Finish an upload session, optionally asserting the content hash.
+    CreateJobRequest:
+      properties:
+        files:
+          items:
+            $ref: '#/components/schemas/JobFileEntry'
+          type: array
+          maxItems: 100
+          minItems: 1
+          title: Files
+          description: 要解析的文档，按顺序。
+        tier:
+          anyOf:
+          - type: string
+            enum:
+            - flash
+            - basic
+            - standard
+            - advanced
+          - type: 'null'
+          title: Tier
+          description: 质量档位：flash、basic、standard 或 advanced。省略则使用服务端默认值。
+          examples:
+          - standard
+        ocr_mode:
+          type: string
+          enum:
+          - auto
+          - txt
+          - ocr
+          title: Ocr Mode
+          description: 本次解析任务的 OCR 模式：自动判断、使用文本层，或强制 OCR。
+          default: auto
+          examples:
+          - auto
+        output_formats:
+          items:
+            type: string
+          type: array
+          title: Output Formats
+          description: 要产出的产物：markdown、middle_json、structured_content、zip。
+          default:
+          - markdown
+          examples:
+          - - markdown
+            - middle_json
+        callback:
+          anyOf:
+          - $ref: '#/components/schemas/CallbackConfig'
+          - type: 'null'
+          description: 任务完成时调用的 Webhook；本地服务会拒绝。
+      additionalProperties: false
+      type: object
+      required:
+      - files
+      title: CreateJobRequest
+      description: Submit documents for parsing.
+    CreateUploadRequest:
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          title: Filename
+          description: 文件名，用于创建 File 对象。
+        bytes:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Bytes
+          description: 将要上传的内容的精确大小。
+        mime_type:
+          type: string
+          minLength: 1
+          title: Mime Type
+          description: 文件的内容类型，例如 application/pdf。
+        purpose:
+          type: string
+          enum:
+          - parse
+          - input_image
+          title: Purpose
+          description: 文件用途：解析文档，或图片输入。
+          default: parse
+        sha256sum:
+          anyOf:
+          - type: string
+            pattern: ^[a-f0-9]{64}$
+          - type: 'null'
+          title: Sha256Sum
+          description: 内容的小写十六进制 SHA-256；可让服务端复用相同的上传。
+        expires_after:
+          anyOf:
+          - $ref: '#/components/schemas/ExpiresAfter'
+          - type: 'null'
+          description: 上传的保留时长；省略时使用服务端默认值。
+      additionalProperties: false
+      type: object
+      required:
+      - filename
+      - bytes
+      - mime_type
+      title: CreateUploadRequest
+      description: Open an upload session before sending the bytes.
+    ErrorDetail:
+      properties:
+        type:
+          type: string
+          title: Type
+          description: 错误类别，例如 invalid_request_error、permission_error、engine_error。
+        code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
+          description: 稳定的机器可读错误码，例如 file_not_found。
+        message:
+          type: string
+          title: Message
+          description: 人类可读的错误描述。
+        param:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Param
+          description: 错误涉及的请求字段（存在时）。
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - message
+      title: ErrorDetail
+      description: One structured error, shared by every V1 endpoint.
+    ErrorResponse:
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+          description: 发生的错误。
+      additionalProperties: false
+      type: object
+      required:
+      - error
+      title: ErrorResponse
+      description: The envelope every error response uses.
+    ExpiresAfter:
+      properties:
+        anchor:
+          type: string
+          const: created_at
+          title: Anchor
+          description: 过期时间的起算时间。
+          default: created_at
+        seconds:
+          type: integer
+          maximum: 2592000.0
+          minimum: 3600.0
+          title: Seconds
+          description: 存活秒数（1 小时到 30 天）。
+          default: 3600
+      additionalProperties: false
+      type: object
+      title: ExpiresAfter
+      description: When the created resource should expire.
+    FileDeletionResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: 被删除的文件 ID。
+        object:
+          type: string
+          const: file
+          title: Object
+          description: 对象类型；恒为 "file"。
+          default: file
+        deleted:
+          type: boolean
+          title: Deleted
+          description: 删除成功时恒为 true。
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      title: FileDeletionResponse
+      description: Confirmation that a file was deleted.
+    FileIdSource:
+      properties:
+        type:
+          type: string
+          const: file_id
+          title: Type
+          description: 选择 file_id 来源变体。
+          default: file_id
+        file_id:
+          type: string
+          title: File Id
+          description: 已完成上传的 File 对象 ID。
+      additionalProperties: false
+      type: object
+      required:
+      - file_id
+      title: FileIdSource
+      description: Reference bytes that were uploaded earlier.
+    FileListResponse:
+      properties:
+        object:
+          type: string
+          const: list
+          title: Object
+          description: 对象类型；恒为 "list"。
+          default: list
+        data:
+          items:
+            $ref: '#/components/schemas/FileObjectModel'
+          type: array
+          title: Data
+          description: 本页的文件。
+        first_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: First Id
+          description: 本页第一项的 ID。
+        last_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Id
+          description: 本页最后一项的 ID；下一页作为 `after` 传入。
+        has_more:
+          type: boolean
+          title: Has More
+          description: 是否还有下一页。
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - data
+      title: FileListResponse
+      description: One page of files.
+    FileObjectModel:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: 文件 ID，提交任务或下载内容时使用。
+        object:
+          type: string
+          const: file
+          title: Object
+          description: 对象类型；恒为 "file"。
+          default: file
+        bytes:
+          type: integer
+          title: Bytes
+          description: 已存储内容的大小。
+        created_at:
+          type: integer
+          title: Created At
+          description: 文件创建的 Unix 时间戳。
+        expires_at:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Expires At
+          description: 文件失效的 Unix 时间戳；null 表示长期保留。
+        filename:
+          type: string
+          title: Filename
+          description: 文件名。
+        purpose:
+          type: string
+          enum:
+          - parse
+          - parse_output
+          - input_image
+          title: Purpose
+          description: 文件用途：解析源文件、解析产物，或图片输入。
+        sha256sum:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sha256Sum
+          description: 内容哈希（服务端已记录时）。
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - bytes
+      - created_at
+      - filename
+      - purpose
+      title: FileObjectModel
+      description: A file resource (source or parse output).
+    FileParseInfo:
+      properties:
+        model_used:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Used
+          description: 解析该文件的模型（已记录时）。
+        duration_ms:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Duration Ms
+          description: 解析耗时（毫秒）。
+        parser_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parser Version
+          description: 解析该文件的引擎版本。
+      additionalProperties: false
+      type: object
+      title: FileParseInfo
+      description: How one file was parsed.
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HealthFeatures:
+      properties:
+        webhook:
+          type: boolean
+          title: Webhook
+          description: 是否接受 Webhook 回调。
+          default: false
+        output_formats:
+          items:
+            type: string
+            enum:
+            - markdown
+            - middle_json
+            - structured_content
+            - html
+            - latex
+            - docx
+            - zip
+          type: array
+          title: Output Formats
+          description: 本服务为解析任务产出的输出格式。
+        sources:
+          items:
+            type: string
+            enum:
+            - file_id
+            - url
+            - inline
+            - local
+          type: array
+          title: Sources
+          description: 本服务接受的来源类型。
+      additionalProperties: false
+      type: object
+      title: HealthFeatures
+      description: What this server instance can do, so a client can plan before submitting.
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: 服务可解析时恒为 "ok"。
+          default: ok
+        version:
+          type: string
+          title: Version
+          description: 处理本请求的引擎版本。
+        features:
+          $ref: '#/components/schemas/HealthFeatures'
+          description: 本实例的能力。
+      additionalProperties: false
+      type: object
+      required:
+      - version
+      title: HealthResponse
+      description: Liveness and capability report.
+    InlineSource:
+      properties:
+        type:
+          type: string
+          const: inline
+          title: Type
+          description: 选择 inline 来源变体。
+          default: inline
+        name:
+          type: string
+          minLength: 1
+          title: Name
+          description: 内联内容的文件名；其后缀决定使用哪个解析器。
+        data:
+          type: string
+          minLength: 1
+          title: Data
+          description: Base64 编码的文件内容。
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - data
+      title: InlineSource
+      description: Carry the document in the request body as base64.
+    JobAsyncResponse:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+          description: 任务 ID，用于轮询、取消与获取结果。
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - partial
+          - failed
+          - canceled
+          title: Status
+          description: 任务状态：queued、running、completed、partial、failed 或 canceled。
+        created_at:
+          type: string
+          title: Created At
+          description: 任务提交的 ISO-8601 UTC 时间。
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+          description: 开始解析的 ISO-8601 UTC 时间。
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+          description: 任务到达终态的 ISO-8601 UTC 时间。
+        tier:
+          type: string
+          enum:
+          - flash
+          - basic
+          - standard
+          - advanced
+          title: Tier
+          description: 任务实际运行的档位。
+        output_formats:
+          items:
+            type: string
+            enum:
+            - markdown
+            - middle_json
+            - structured_content
+            - html
+            - latex
+            - docx
+            - zip
+          type: array
+          title: Output Formats
+          description: 任务被要求产出的产物。
+        access_level:
+          type: string
+          enum:
+          - anonymous
+          - registered
+          title: Access Level
+          description: 提交任务时调用方是否已鉴权。
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/JobProgress'
+          - type: 'null'
+          description: 逐文件的进度计数。
+        files:
+          items:
+            $ref: '#/components/schemas/JobFileResult'
+          type: array
+          title: Files
+          description: 每个提交的文档一项，按请求顺序。
+        links:
+          $ref: '#/components/schemas/JobLinks'
+          description: 本任务自身资源的 URL。
+      additionalProperties: false
+      type: object
+      required:
+      - job_id
+      - status
+      - created_at
+      - tier
+      - output_formats
+      - access_level
+      - files
+      - links
+      title: JobAsyncResponse
+      description: A parse job and its per-file results.
+    JobCancelResponse:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+          description: 被取消的任务 ID。
+        status:
+          type: string
+          const: canceled
+          title: Status
+          description: 恒为 "canceled"。
+          default: canceled
+        canceled_at:
+          type: string
+          title: Canceled At
+          description: 取消操作的 ISO-8601 UTC 时间。
+      additionalProperties: false
+      type: object
+      required:
+      - job_id
+      - canceled_at
+      title: JobCancelResponse
+      description: Confirmation that a job was canceled.
+    JobFileEntry:
+      properties:
+        source:
+          oneOf:
+          - $ref: '#/components/schemas/FileIdSource'
+          - $ref: '#/components/schemas/UrlSource'
+          - $ref: '#/components/schemas/InlineSource'
+          - $ref: '#/components/schemas/LocalSource'
+          title: Source
+          description: 文档来源；`type` 决定使用哪个来源变体。
+          discriminator:
+            propertyName: type
+            mapping:
+              file_id: '#/components/schemas/FileIdSource'
+              inline: '#/components/schemas/InlineSource'
+              local: '#/components/schemas/LocalSource'
+              url: '#/components/schemas/UrlSource'
+        page_range:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Page Range
+          description: PDF 页码选择：1 起始的闭区间，例如 '1-5,8,r3-r1'；'r1' 表示最后一页，'all' 表示全部页面。留空表示不指定。选择会排序去重，越界页会被忽略。反向区间、'~' 与负数页码无效。
+          examples:
+          - 1-5,8,r3-r1
+          - all
+      additionalProperties: false
+      type: object
+      required:
+      - source
+      title: JobFileEntry
+      description: One document to parse, with an optional page selection.
+    JobFileResult:
+      properties:
+        file_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: File Id
+          description: 已存储源文件的 ID（存在时）。
+        name:
+          type: string
+          title: Name
+          description: 源文件名。
+        page_range:
+          type: string
+          title: Page Range
+          description: 已解析的页码，规范化为区间字符串。
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - failed
+          title: Status
+          description: 单文件状态：queued、running、completed 或 failed。
+        parse:
+          anyOf:
+          - $ref: '#/components/schemas/FileParseInfo'
+          - type: 'null'
+          description: 解析详情（完成后）。
+        output_files:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFiles'
+          - type: 'null'
+          description: 为该文件产出的产物。
+        error:
+          anyOf:
+          - $ref: '#/components/schemas/ErrorDetail'
+          - type: 'null'
+          description: 该文件失败的原因（失败时）。
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - page_range
+      - status
+      title: JobFileResult
+      description: One file's status inside a job.
+    JobLinks:
+      properties:
+        self:
+          type: string
+          title: Self
+          description: 轮询任务状态的 URL。
+        cancel:
+          type: string
+          title: Cancel
+          description: 取消任务的 URL。
+      additionalProperties: false
+      type: object
+      required:
+      - self
+      - cancel
+      title: JobLinks
+      description: URLs for the job's own resources.
+    JobListItem:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+          description: 任务 ID。
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - partial
+          - failed
+          - canceled
+          title: Status
+          description: 任务状态。
+        created_at:
+          type: string
+          title: Created At
+          description: 任务提交的 ISO-8601 UTC 时间。
+        file_count:
+          type: integer
+          title: File Count
+          description: 任务中的文档数。
+      additionalProperties: false
+      type: object
+      required:
+      - job_id
+      - status
+      - created_at
+      - file_count
+      title: JobListItem
+      description: One job in a listing.
+    JobListResponse:
+      properties:
+        object:
+          type: string
+          const: list
+          title: Object
+          description: 对象类型；恒为 "list"。
+          default: list
+        data:
+          items:
+            $ref: '#/components/schemas/JobListItem'
+          type: array
+          title: Data
+          description: 本页的任务。
+        first_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: First Id
+          description: 本页第一个任务的 ID。
+        last_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Id
+          description: 本页最后一个任务的 ID；下一页作为 `after` 传入。
+        has_more:
+          type: boolean
+          title: Has More
+          description: 是否还有下一页。
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - data
+      title: JobListResponse
+      description: One page of jobs.
+    JobProgress:
+      properties:
+        completed:
+          type: integer
+          title: Completed
+          description: 成功完成的文件数。
+          default: 0
+        failed:
+          type: integer
+          title: Failed
+          description: 失败的文件数。
+          default: 0
+        total:
+          type: integer
+          title: Total
+          description: 任务中的文件数。
+          default: 0
+      additionalProperties: false
+      type: object
+      title: JobProgress
+      description: Per-file progress counters.
+    LocalSource:
+      properties:
+        type:
+          type: string
+          const: local
+          title: Type
+          description: 选择 local 来源变体。
+          default: local
+        path:
+          type: string
+          minLength: 1
+          title: Path
+          description: 服务端路径；仅在启用本地来源时接受。
+      additionalProperties: false
+      type: object
+      required:
+      - path
+      title: LocalSource
+      description: Read a path on the server's own filesystem.
+    ModelInfo:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: 请求指定模型时传入的模型 ID。
+        object:
+          type: string
+          const: model
+          title: Object
+          description: 对象类型；恒为 "model"。
+          default: model
+        created:
+          type: integer
+          title: Created
+          description: 本服务注册该模型的 Unix 时间戳。
+        owned_by:
+          type: string
+          title: Owned By
+          description: 模型的所有者。
+          default: mineru
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: 模型说明，以及如何选择质量。
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - created
+      title: ModelInfo
+      description: One advertised model.
+    ModelListResponse:
+      properties:
+        object:
+          type: string
+          const: list
+          title: Object
+          description: 对象类型；恒为 "list"。
+          default: list
+        data:
+          items:
+            $ref: '#/components/schemas/ModelInfo'
+          type: array
+          title: Data
+          description: 已公布的模型。
+      additionalProperties: false
+      type: object
+      required:
+      - data
+      title: ModelListResponse
+      description: The models this server advertises.
+    OutputFileRef:
+      properties:
+        file_id:
+          type: string
+          title: File Id
+          description: 文件 ID；通过 /v1/files/{file_id}/content 下载。
+        bytes:
+          type: integer
+          title: Bytes
+          description: 产物大小。
+      additionalProperties: false
+      type: object
+      required:
+      - file_id
+      - bytes
+      title: OutputFileRef
+      description: A produced artifact, fetched through the Files API.
+    OutputFiles:
+      properties:
+        markdown:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: 文档的 Markdown 渲染产物。
+        middle_json:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: Middle JSON 解析结果。
+        structured_content:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: 结构化内容树。
+        html:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: HTML 渲染产物（服务端已产出时）。
+        latex:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: LaTeX 渲染产物（服务端已产出时）。
+        docx:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: DOCX 渲染产物（服务端已产出时）。
+        zip:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: 包含全部产物的自包含压缩包。
+      additionalProperties: false
+      type: object
+      title: OutputFiles
+      description: Per-file output artifacts. Content is downloaded via the Files API.
+    TaskFileContent:
+      properties:
+        file_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: File Id
+          description: 已存储源文件的 ID（存在时）。
+        name:
+          type: string
+          title: Name
+          description: 源文件名。
+        page_range:
+          type: string
+          title: Page Range
+          description: 已解析的页码，规范化为区间字符串。
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - failed
+          title: Status
+          description: 单文件状态：queued、running、completed 或 failed。
+        parse:
+          anyOf:
+          - $ref: '#/components/schemas/FileParseInfo'
+          - type: 'null'
+          description: 解析详情（完成后）。
+        output_files:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFiles'
+          - type: 'null'
+          description: 为该文件产出的产物。
+        error:
+          anyOf:
+          - $ref: '#/components/schemas/ErrorDetail'
+          - type: 'null'
+          description: 该文件失败的原因（失败时）。
+        content:
+          additionalProperties: true
+          type: object
+          title: Content
+          description: 按格式内联的产物（markdown、middle_json、structured_content）；完成前为空。
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - page_range
+      - status
+      title: TaskFileContent
+      description: Inline text artifacts, keeping the per-file status, error and resource refs.
+    TaskResultResponse:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+          description: 任务 ID，用于轮询、取消与获取结果。
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - partial
+          - failed
+          - canceled
+          title: Status
+          description: 任务状态：queued、running、completed、partial、failed 或 canceled。
+        created_at:
+          type: string
+          title: Created At
+          description: 任务提交的 ISO-8601 UTC 时间。
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+          description: 开始解析的 ISO-8601 UTC 时间。
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+          description: 任务到达终态的 ISO-8601 UTC 时间。
+        tier:
+          type: string
+          enum:
+          - flash
+          - basic
+          - standard
+          - advanced
+          title: Tier
+          description: 任务实际运行的档位。
+        output_formats:
+          items:
+            type: string
+            enum:
+            - markdown
+            - middle_json
+            - structured_content
+            - html
+            - latex
+            - docx
+            - zip
+          type: array
+          title: Output Formats
+          description: 任务被要求产出的产物。
+        access_level:
+          type: string
+          enum:
+          - anonymous
+          - registered
+          title: Access Level
+          description: 提交任务时调用方是否已鉴权。
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/JobProgress'
+          - type: 'null'
+          description: 逐文件的进度计数。
+        files:
+          items:
+            $ref: '#/components/schemas/TaskFileContent'
+          type: array
+          title: Files
+          description: 每个提交的文档一项，并内联内容。
+        links:
+          $ref: '#/components/schemas/JobLinks'
+          description: 本任务自身资源的 URL。
+        status_url:
+          type: string
+          title: Status Url
+          description: 轮询本任务状态的 URL。
+        result_url:
+          type: string
+          title: Result Url
+          description: 获取任务结果的 URL；用 response_format 选择形态。
+      additionalProperties: false
+      type: object
+      required:
+      - task_id
+      - status
+      - created_at
+      - tier
+      - output_formats
+      - access_level
+      - files
+      - links
+      - status_url
+      - result_url
+      title: TaskResultResponse
+      description: A parse result that can be consumed directly.
+    TaskStatusResponse:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+          description: 任务 ID，用于轮询、取消与获取结果。
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - partial
+          - failed
+          - canceled
+          title: Status
+          description: 任务状态：queued、running、completed、partial、failed 或 canceled。
+        created_at:
+          type: string
+          title: Created At
+          description: 任务提交的 ISO-8601 UTC 时间。
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+          description: 开始解析的 ISO-8601 UTC 时间。
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+          description: 任务到达终态的 ISO-8601 UTC 时间。
+        tier:
+          type: string
+          enum:
+          - flash
+          - basic
+          - standard
+          - advanced
+          title: Tier
+          description: 任务实际运行的档位。
+        output_formats:
+          items:
+            type: string
+            enum:
+            - markdown
+            - middle_json
+            - structured_content
+            - html
+            - latex
+            - docx
+            - zip
+          type: array
+          title: Output Formats
+          description: 任务被要求产出的产物。
+        access_level:
+          type: string
+          enum:
+          - anonymous
+          - registered
+          title: Access Level
+          description: 提交任务时调用方是否已鉴权。
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/JobProgress'
+          - type: 'null'
+          description: 逐文件的进度计数。
+        files:
+          items:
+            $ref: '#/components/schemas/JobFileResult'
+          type: array
+          title: Files
+          description: 每个提交的文档一项，按请求顺序。
+        links:
+          $ref: '#/components/schemas/JobLinks'
+          description: 本任务自身资源的 URL。
+        status_url:
+          type: string
+          title: Status Url
+          description: 轮询本任务状态的 URL。
+        result_url:
+          type: string
+          title: Result Url
+          description: 获取任务结果的 URL；用 response_format 选择形态。
+      additionalProperties: false
+      type: object
+      required:
+      - task_id
+      - status
+      - created_at
+      - tier
+      - output_formats
+      - access_level
+      - files
+      - links
+      - status_url
+      - result_url
+      title: TaskStatusResponse
+      description: Reuse the job fields, serialized as task_id with the V1 query URLs.
+    TierInfo:
+      properties:
+        id:
+          type: string
+          enum:
+          - flash
+          - basic
+          - standard
+          - advanced
+          title: Id
+          description: 提交解析任务时作为 `tier` 传入的档位。
+        description:
+          type: string
+          title: Description
+          description: 该档位代表的质量与成本权衡。
+        current_model:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Current Model
+          description: 为该档位提供服务的模型（已绑定时）。
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - description
+      title: TierInfo
+      description: One parsing tier and the model that currently backs it.
+    TierListResponse:
+      properties:
+        object:
+          type: string
+          const: list
+          title: Object
+          description: 对象类型；恒为 "list"。
+          default: list
+        data:
+          items:
+            $ref: '#/components/schemas/TierInfo'
+          type: array
+          title: Data
+          description: 已公布的解析等级。
+      additionalProperties: false
+      type: object
+      required:
+      - data
+      title: TierListResponse
+      description: The tiers this server can serve.
+    UploadResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: 上传 ID，内容与完成接口使用。
+        object:
+          type: string
+          const: upload
+          title: Object
+          description: 对象类型；恒为 "upload"。
+          default: upload
+        bytes:
+          type: integer
+          title: Bytes
+          description: 声明的内容大小。
+        created_at:
+          type: integer
+          title: Created At
+          description: 会话创建的 Unix 时间戳。
+        expires_at:
+          type: integer
+          title: Expires At
+          description: 会话失效的 Unix 时间戳。
+        filename:
+          type: string
+          title: Filename
+          description: 上传将创建的文件名。
+        purpose:
+          type: string
+          enum:
+          - parse
+          - parse_output
+          - input_image
+          title: Purpose
+          description: 文件用途。
+          default: parse
+        mime_type:
+          type: string
+          title: Mime Type
+          description: 文件的内容类型。
+        sha256sum:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sha256Sum
+          description: 内容哈希（已知时）。
+        status:
+          type: string
+          enum:
+          - pending
+          - completed
+          - cancelled
+          - expired
+          title: Status
+          description: 上传生命周期状态：pending、completed、cancelled 或 expired。
+        upload_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Upload Url
+          description: 上传处于 pending 时，PUT 字节的目标地址。
+        upload_method:
+          anyOf:
+          - type: string
+            const: PUT
+          - type: 'null'
+          title: Upload Method
+          description: '`upload_url` 使用的 HTTP 方法。'
+        upload_headers:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Upload Headers
+          description: 随内容 PUT 一起发送的请求头。
+        file:
+          anyOf:
+          - $ref: '#/components/schemas/FileObjectModel'
+          - type: 'null'
+          description: 创建的 File 对象（完成后）。
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - bytes
+      - created_at
+      - expires_at
+      - filename
+      - mime_type
+      - status
+      title: UploadResponse
+      description: An upload session, and the File object once it is complete.
+    UrlSource:
+      properties:
+        type:
+          type: string
+          const: url
+          title: Type
+          description: 选择 url 来源变体。
+          default: url
+        url:
+          type: string
+          title: Url
+          description: 服务端在解析前下载的 HTTP(S) URL。
+      additionalProperties: false
+      type: object
+      required:
+      - url
+      title: UrlSource
+      description: Let the server fetch the document itself.
+    UsageBillingPeriod:
+      properties:
+        start:
+          type: string
+          title: Start
+          description: 当前计费周期开始的 ISO-8601 UTC 时间。
+        end:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: End
+          description: 本周期结束的 ISO-8601 UTC 时间；未结束时为 null。
+      additionalProperties: false
+      type: object
+      required:
+      - start
+      title: UsageBillingPeriod
+      description: Window the usage counters cover.
+    UsageCurrent:
+      properties:
+        pages_processed:
+          type: integer
+          title: Pages Processed
+          description: 本周期已解析的页数。
+          default: 0
+        files_processed:
+          type: integer
+          title: Files Processed
+          description: 本周期已解析的文件数。
+          default: 0
+        jobs_created:
+          type: integer
+          title: Jobs Created
+          description: 本周期已提交的任务数。
+          default: 0
+      additionalProperties: false
+      type: object
+      title: UsageCurrent
+      description: What this server has processed in the current period.
+    UsageLimits:
+      properties:
+        max_pages_per_file:
+          type: integer
+          title: Max Pages Per File
+          description: 单个文档的页数上限。
+          default: 1000
+        max_file_size_bytes:
+          type: integer
+          title: Max File Size Bytes
+          description: 单个上传文件的大小上限。
+          default: 209715200
+        max_files_per_job:
+          type: integer
+          title: Max Files Per Job
+          description: 单个任务的文档数上限。
+          default: 100
+        max_concurrent_jobs:
+          type: integer
+          title: Max Concurrent Jobs
+          description: 本服务同时运行的任务数。
+          default: 1
+        max_file_retention_days:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Max File Retention Days
+          description: 产物保留天数；null 表示不限。
+      additionalProperties: false
+      type: object
+      title: UsageLimits
+      description: What this server accepts per request.
+    UsageResponse:
+      properties:
+        object:
+          type: string
+          const: usage
+          title: Object
+          description: 对象类型；恒为 "usage"。
+          default: usage
+        access_level:
+          type: string
+          enum:
+          - anonymous
+          - registered
+          title: Access Level
+          description: 本次调用方是否已鉴权。
+        billing_period:
+          $ref: '#/components/schemas/UsageBillingPeriod'
+          description: 计数覆盖的时间窗口。
+        current:
+          $ref: '#/components/schemas/UsageCurrent'
+          description: 当前周期内的计数。
+        limits:
+          $ref: '#/components/schemas/UsageLimits'
+          description: 对新请求应用的限额。
+      additionalProperties: false
+      type: object
+      required:
+      - access_level
+      - billing_period
+      - current
+      - limits
+      title: UsageResponse
+      description: Current usage and the limits it is measured against.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      description: Bearer API key when configured
+      scheme: bearer
+tags:
+- name: Tasks
+  description: 一次请求完成解析、异步任务，以及内联或 ZIP 结果。
+- name: Health
+  description: 存活与服务就绪状态。
+- name: Tiers
+  description: 本服务公布的解析等级与运行时能力。
+- name: Models
+  description: 可用于解析的 VLM 模型。
+- name: Uploads
+  description: 为源文档创建与管理上传会话。
+- name: Files
+  description: 查看已上传的文件并获取解析内容。
+- name: Jobs
+  description: 提交解析任务并轮询结果。
+- name: Usage
+  description: 远程服务配额与用量报告。
+servers:
+- url: SERVER_URL
+  description: API Server

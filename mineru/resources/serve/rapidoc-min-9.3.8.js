@@ -20765,11 +20765,74 @@ customize their theme. Simply add your css to this file and yarn build.
     "Expand": "展开",
     "Collapse": "收起",
     "Undo": "撤销",
-    "SET": "设置"
+    "SET": "设置",
+    "ADD": "添加",
+    "ANY OF": "任意满足",
+    "ONE OF": "满足其一",
+    "API Server": "API 服务器",
+    "AUTHENTICATION": "认证",
+    "Authorization": "鉴权",
+    "Authorization header": "Authorization 请求头",
+    "Bearer Token": "Bearer 令牌",
+    "OPERATIONS": "接口",
+    "REQUEST HEADERS": "请求头",
+    "SEARCH": "搜索",
+    "Requires": "需要",
+    "Value": "值",
+    "Use": "使用",
+    "Multiline description": "多行描述",
+    "(None Applied)": "（未使用）",
+    "followed by a space and token value": "后跟空格和令牌值",
+    "containing the word": "包含关键词",
+    "Anchor:": "起始于",
+    "Allowed:": "允许值：",
+    "Default:": "默认值：",
+    "Pattern:": "匹配模式：",
+    "Bytes:": "字节数",
+    "Constraints:": "约束",
+    "Data:": "内容",
+    "Examples:": "示例",
+    "File Id:": "文件 ID",
+    "Filename:": "文件名",
+    "Max Items:": "最大条目数",
+    "Mime Type:": "MIME 类型",
+    "Min Items:": "最小条目数",
+    "Name:": "名称",
+    "Ocr Mode:": "OCR 模式",
+    "Output Formats:": "输出格式",
+    "Path:": "路径",
+    "Purpose:": "用途",
+    "Seconds:": "秒数",
+    "Type:": "类型",
+    "Url:": "URL",
+    "File ID": "文件 ID",
+    "File content": "文件内容",
+    "Files:": "文件：",
+    "Content-Length": "Content-Length",
+    "Redirect to CDN (cloud mode)": "重定向到 CDN（云端模式）"
   };
+  /* Schema rows render their min/max constraints inline, e.g. "Min 1┃Max 100";
+     the numbers vary per field, so these are matched by shape rather than
+     enumerated. */
+  const rulesZh = [
+    [/^Min (.+)┃Max (.+)$/, "最小 $1┃最大 $2"],
+    [/^Min (\d+) chars$/, "最少 $1 个字符"],
+    [/^More than (\d+)$/, "大于 $1"]
+  ];
   const lang = new URLSearchParams(window.location.search).get("lang") === "en" ? "en" : "zh";
   if (lang === "en") return;
   const map = mapZh;
+  const translate = (text) => {
+    if (map[text] !== undefined) return map[text];
+    for (const [pattern, replacement] of rulesZh) {
+      if (pattern.test(text)) return text.replace(pattern, replacement);
+    }
+    return null;
+  };
+  /* RapiDoc nests custom elements (api-request, api-response, tag-input) that
+     keep their own shadow roots, and the TRY / CLEAR / FILL EXAMPLE buttons
+     live inside those. Walking only the host's shadow root leaves them in
+     English, so the walk descends into every shadow root it meets. */
   const replaceTexts = (root) => {
     if (!root) return;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
@@ -20777,23 +20840,35 @@ customize their theme. Simply add your css to this file and yarn build.
     while ((node = walker.nextNode())) {
       const raw = node.textContent || "";
       const norm = raw.trim().replace(/\s+/g, " ");
-      if (map[norm]) {
-        node.textContent = raw.replace(norm, map[norm]);
+      const translated = translate(norm);
+      if (translated !== null) {
+        node.textContent = raw.replace(norm, translated);
       }
     }
+    root.querySelectorAll("*").forEach((child) => {
+      if (child.shadowRoot) replaceTexts(child.shadowRoot);
+    });
   };
-  const apply = (el) => {
-    const target = el.shadowRoot || el.renderRoot || el;
-    replaceTexts(target);
-    /* The observer must stay attached for the lifetime of the element: RapiDoc
-       re-renders whenever the user switches operation, and a timed disconnect
-       would leave everything rendered after that point in English. Re-entry is
-       avoided by the walker doing nothing when a string is already translated. */
-    if (el.__zhObserver) return;
-    const mo = new MutationObserver(() => replaceTexts(target));
-    mo.observe(target, { childList: true, subtree: true });
-    el.__zhObserver = mo;
+  /* MutationObserver does not cross shadow boundaries, so every shadow root
+     gets its own observer; otherwise a re-render inside api-request would leave
+     that panel in English. Observers stay attached for the element's lifetime:
+     RapiDoc re-renders whenever the user switches operation, and a timed
+     disconnect would leave everything after that point untranslated. */
+  const observe = (root) => {
+    if (!root) return;
+    replaceTexts(root);
+    if (!root.__zhObserver) {
+      /* Re-enter through observe, not replaceTexts: a re-render can introduce a
+         new nested shadow root, which needs its own observer. It converges
+         because already-translated text matches nothing. */
+      root.__zhObserver = new MutationObserver(() => observe(root));
+      root.__zhObserver.observe(root, { childList: true, subtree: true });
+    }
+    root.querySelectorAll("*").forEach((child) => {
+      if (child.shadowRoot) observe(child.shadowRoot);
+    });
   };
+  const apply = (el) => observe(el.shadowRoot || el.renderRoot || el);
   customElements.whenDefined("rapi-doc").then(() => {
     const RD = customElements.get("rapi-doc");
     const orig = RD.prototype.render;

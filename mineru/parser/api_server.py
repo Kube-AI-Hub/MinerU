@@ -2423,7 +2423,7 @@ async def create_job(
     job_store: JobStore = Depends(_get_job_store),
     access_level: AccessLevel = Depends(_resolve_access_level),
 ) -> Response:
-    """通过共享任务服务创建 V1 Job，保持既有响应结构。"""
+    """Create a V1 job through the shared task service, keeping the response shape."""
     rec = await submit_parse_job(body, request, file_store, job_store, access_level)
     return JSONResponse(
         content=job_store.build_response(rec, access_level=access_level).model_dump(by_alias=True), status_code=202

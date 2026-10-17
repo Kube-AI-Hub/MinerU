@@ -9,6 +9,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 from mineru.kit.commands import serve as serve_command
 from mineru.kit.serve import app as serve_app
@@ -341,6 +342,74 @@ class TestServingApp:
             "pdf",
         ]
 
+    def test_config_exposes_both_spec_languages(self, client):
+        """The page loads the spec by language, so the addresses come from /config.
+
+        Hard-coding them in the frontend would drift from the route the server
+        actually serves.
+        """
+        payload = client.get(serve_app.CONFIG_PATH).json()
+
+        assert set(payload["openapi"]) == {"en", "zh"}
+        for language, address in payload["openapi"].items():
+            assert address.startswith("."), language
+            assert f"lang={language}" in address, language
+
+    def test_openapi_specs_are_served_in_both_languages(self, client):
+        """Both files ship, parse, and describe the same operations as the live schema.
+
+        The YAML is generated from the running app, so a mismatch means someone
+        changed an endpoint and did not re-run scripts/export_openapi_specs.py.
+        """
+        live = client.get("/openapi.json").json()
+        for language in ("zh", "en"):
+            response = client.get(f"{serve_app.OPENAPI_PATH}?lang={language}")
+            assert response.status_code == 200, language
+            assert "yaml" in response.headers["content-type"], language
+            spec = yaml.safe_load(response.text)
+            assert set(spec["paths"]) == set(live["paths"]), language
+            assert spec["servers"][0]["url"] == serve_app.SERVER_URL_PLACEHOLDER, language
+
+    def test_chinese_spec_is_translated(self, client):
+        """A Chinese spec with English copy reads as "untranslated" to the user.
+
+        Sampling the two most visible strings keeps the check cheap; the full
+        coverage is guaranteed by the export script's fallback plus the table
+        itself.
+        """
+        spec = yaml.safe_load(client.get(f"{serve_app.OPENAPI_PATH}?lang=zh").text)
+        english = yaml.safe_load(client.get(f"{serve_app.OPENAPI_PATH}?lang=en").text)
+
+        def has_chinese(value: str) -> bool:
+            return any("\u4e00" <= char <= "\u9fff" for char in value)
+
+        assert has_chinese(spec["paths"]["/v1/health"]["get"]["description"])
+        assert has_chinese(spec["paths"]["/v1/tasks"]["post"]["description"])
+        # The English file must stay English, or the two languages are the same.
+        assert not has_chinese(english["paths"]["/v1/health"]["get"]["description"])
+
+    def test_openapi_specs_offer_every_sample_language(self, client):
+        """Each operation needs Python, JavaScript and cURL, or the tab row is short.
+
+        RapiDoc only renders samples the spec declares, and it picks the
+        highlighter by `lang`: the bundled Prism build has shell but not curl.
+        """
+        spec = yaml.safe_load(client.get(f"{serve_app.OPENAPI_PATH}?lang=zh").text)
+
+        operations = 0
+        for path, methods in spec["paths"].items():
+            for method, operation in methods.items():
+                if method not in {"get", "post", "put", "delete", "patch"}:
+                    continue
+                operations += 1
+                samples = operation.get("x-code-samples") or []
+                langs = {sample["lang"] for sample in samples}
+                assert {"python", "javascript", "shell"} <= langs, f"{method.upper()} {path} {langs}"
+                for sample in samples:
+                    assert sample.get("label"), f"{method.upper()} {path}"
+                    assert sample.get("source"), f"{method.upper()} {path}"
+        assert operations == 23, operations
+
     def test_openapi_documents_every_operation_and_field(self, client):
         """The API tab is the contract a platform integrates against.
 
@@ -377,6 +446,47 @@ class TestServingApp:
                 continue
             for prop, definition in (schema.get("properties") or {}).items():
                 assert definition.get("description"), f"{name}.{prop}"
+
+    def test_openapi_specs_mark_the_public_operations(self, client):
+        """Health, Tiers and Models need no credential, and the docs must say so.
+
+        The served spec is what the API tab renders, so a missing `security: []`
+        would tell the reader that every call needs a token and would make
+        RapiDoc attach one to its "Try" requests.
+        """
+        spec = yaml.safe_load(client.get(f"{serve_app.OPENAPI_PATH}?lang=zh").text)
+
+        public = {
+            ("get", "/v1/health"),
+            ("get", "/v1/tiers"),
+            ("get", "/v1/models"),
+            ("get", "/v1/models/{model}"),
+        }
+        for path, methods in spec["paths"].items():
+            for method, operation in methods.items():
+                if method not in {"get", "post", "put", "delete", "patch"}:
+                    continue
+                if (method, path) in public:
+                    assert operation.get("security") == [], f"{method.upper()} {path} must be public"
+                else:
+                    assert operation.get("security"), f"{method.upper()} {path} must require a key"
+
+    def test_public_operation_samples_carry_no_credential(self, client):
+        """A public sample with an Authorization header teaches the wrong thing."""
+        spec = yaml.safe_load(client.get(f"{serve_app.OPENAPI_PATH}?lang=zh").text)
+
+        for path, method in (("/v1/health", "get"), ("/v1/tiers", "get"), ("/v1/models", "get")):
+            for sample in spec["paths"][path][method]["x-code-samples"]:
+                assert "YOUR_TOKEN" not in sample["source"], f"{method} {path} {sample['label']}"
+                assert "Authorization" not in sample["source"], f"{method} {path} {sample['label']}"
+
+    def test_authenticated_operation_samples_carry_the_placeholder(self, client):
+        """Gated operations keep showing that a credential is expected."""
+        spec = yaml.safe_load(client.get(f"{serve_app.OPENAPI_PATH}?lang=zh").text)
+
+        for sample in spec["paths"]["/v1/files"]["get"]["x-code-samples"]:
+            assert "YOUR_TOKEN" in sample["source"], sample["label"]
+            assert "Authorization" in sample["source"], sample["label"]
 
     def test_download_renders_every_format_without_an_api_key(self, client, result_archive):
         """The WebUI offers these formats to everyone; so must the playground.
@@ -749,6 +859,29 @@ class TestResponseParsing:
         assert "api-key-name" in script
         assert "applyApiToken" in script
 
+    def test_loads_the_spec_by_language(self, script):
+        """The API tab's spec must follow ?lang=, or the page and docs disagree."""
+        assert "./openapi?" in script
+        assert "currentLanguage" in script
+        assert "loadSpec" in script
+
+    def test_reloads_the_spec_when_the_token_changes(self, script):
+        """The samples carry the credential, so they must refresh with it."""
+        assert "loadSpec()" in script
+        # The reload lives in applyApiToken, which the toggle already calls.
+        assert "applyApiToken" in script
+
+    def test_hides_the_overview_and_authentication_blocks(self, script):
+        """Every operation authenticates the same way; the reader wants the call."""
+        assert "'show-info': 'false'" in script
+        assert "'allow-authentication': 'false'" in script
+
+    def test_matches_the_other_engines_display_attributes(self, script):
+        """One page shape across engines keeps the platform iframe predictable."""
+        assert "'schema-style': 'table'" in script
+        assert "'show-curl-before-try': 'true'" in script
+        assert "'response-area-height': '300'" in script
+
     def test_checks_the_token_toggle_when_the_url_carries_one(self, script):
         """Otherwise the token is silently ignored and gated actions look bare."""
         assert "initTokenToggle" in script
@@ -835,3 +968,39 @@ def test_health_payload_is_json_serialisable(tmp_path, model_home):
 
     assert result is not None
     json.dumps({"model_source": str(result.source)})
+
+
+#: The playground assets are shipped to every engine that embeds this page.
+_RAPIDOC_COPIES = (
+    Path(__file__).resolve().parents[2] / "mineru/resources/serve/rapidoc-min-9.3.8.js",
+    Path(__file__).resolve().parents[3]
+    / "csghub-server/docker/inference/asr/frontend/rapidoc-min-9.3.8.js",
+    Path(__file__).resolve().parents[3]
+    / "csghub-server/docker/inference/chatterbox-tts/frontend/rapidoc-min-9.3.8.js",
+    Path(__file__).resolve().parents[3]
+    / "csghub-server/docker/inference/template/frontend/rapidoc-min-9.3.8.js",
+)
+
+
+def test_rapidoc_copies_stay_in_step() -> None:
+    """Four engines ship the same patched RapiDoc; editing one alone leaves the rest behind.
+
+    The i18n overlay is the only change to the bundle, so comparing the overlay
+    text catches a divergence without hashing a 1.4 MB file.
+    """
+    present = [path for path in _RAPIDOC_COPIES if path.is_file()]
+    if len(present) < 2:
+        pytest.skip("only one copy of the bundle is checked out")
+
+    def overlay(path: Path) -> str:
+        text = path.read_text(encoding="utf-8")
+        start = text.index("// i18n overlay")
+        # The overlay ends at the last line it closes; the webpack runtime
+        # resumes right after it.
+        end = text.index("})();", start) + len("})();")
+        return text[start:end]
+
+    first = overlay(present[0])
+    for path in present[1:]:
+        assert overlay(path) == first, f"{path} has drifted from {present[0]}"
+

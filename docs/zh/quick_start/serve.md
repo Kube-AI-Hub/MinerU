@@ -89,8 +89,12 @@ mineru-kit models download MinerU-4_models_torch -s modelscope
 - **解析**页签：选文件或点内置示例，选解析等级、勾选强制 OCR、用起止滑块选页码范围，结果区显示带格式的 Markdown，可切换 JSON 视图。左侧会按引擎真实阶段点亮进度（准备请求 → 提交任务 → 排队 → 解析中 → 下载结果 → 整理输出 → 完成）并计时。
 - **对照**：中间栏是源文件预览（PDF 可翻页、跳页、缩放），与右侧结果双向高亮——鼠标移到任一侧的区块，另一侧同时高亮，点击可固定选中。
 - **下载**：Markdown / JSON / Structured JSON 直接取自解析产物；HTML / LaTeX / DOCX / EPUB / PDF 由 `/download` 用 WebUI 同一套 renderer 就地转换，**不需要 API key**（LaTeX 为 `_latex.zip`，PDF 为 `_rendered.pdf`）；ZIP 是完整产物包。
-- **API** 页签：内嵌接口文档（RapiDoc），可以直接在页面上调一次 `/v1/file_parse`。
-- 页面读 `?lang=` 与 `?token=`：前者跟随平台语言切换中英文，后者在勾选「使用我的访问令牌」后作为 `Authorization` 头发出，API 页签的调用同样会带上它。
+- **API** 页签：内嵌接口文档（RapiDoc）。不渲染引擎的整体介绍与 Authentication 折叠区——每个操作的鉴权方式相同，读者关心的是具体接口怎么调。每个接口都带 **Python / JavaScript / cURL 三种可复制的代码示例**，cURL 示例按 shell 语法高亮。
+- **双语**：页面读 `?lang=`，同时切换界面文案与接口文档。中文规格由 `scripts/export_openapi_specs.py` 从运行时 schema 生成，文案取自 `mineru/resources/serve/openapi.i18n.json`；改接口后要重新运行该脚本。
+- **令牌**：`?token=` 带上后「使用我的访问令牌」默认勾选。勾选状态会把该 token 作为 `Authorization` 头发给解析接口，并注入 API 页签的「试一试」请求与代码示例；未勾选时代码示例保留 `YOUR_TOKEN` 占位符，而不是留一个悬空的 `Bearer `。
+- **公开接口**：`/v1/health`、`/v1/tiers`、`/v1/models`、`/v1/models/{model}` 无需认证，文档里同样标注为公开，代码示例也不带凭据。
+
+前端的实现细节、规格生成方式与 RapiDoc 的改动见 [mineru/resources/serve/README.md](https://github.com/opendatalab/MinerU/blob/master/mineru/resources/serve/README.md)。
 
 静态资源带 `Cache-Control: no-cache`。它们随引擎镜像变化，若被浏览器启发式缓存，升级后会继续渲染旧页面，现象难以从外部定位。
 

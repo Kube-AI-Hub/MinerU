@@ -89,8 +89,12 @@ Two example documents ship with the page (`/demo/demo1.pdf`, `/demo/demo2.pdf`),
 - **Parse** tab: choose a file or click an example, pick a parsing level, tick Force OCR, and select a page range with the two sliders; the result pane shows formatted Markdown and can switch to a JSON view. The stage list on the left lights up as the engine reports its own progress (preparing request → submitting job → queued → parsing → downloading result → assembling output → done) with a running timer.
 - **Comparison**: the middle column previews the source document (PDFs page, jump and zoom), and highlights are bidirectional with the result pane — hover a block on either side and the other follows; click to pin the selection.
 - **Download**: Markdown / JSON / Structured JSON come straight from the parse artifacts; HTML / LaTeX / DOCX / EPUB / PDF are converted in place by `/download` using the same renderer as the WebUI and need **no API key** (LaTeX arrives as `_latex.zip`, PDF as `_rendered.pdf`); ZIP is the full artifact bundle.
-- **API** tab: the interface documentation (RapiDoc), embedded, so `/v1/file_parse` can be called from the page.
-- The page reads `?lang=` and `?token=`: the first follows the platform's language, the second is sent as an `Authorization` header when "Use my access token" is ticked, and the API tab's calls carry it too.
+- **API** tab: the interface documentation (RapiDoc), embedded. The engine's overall description and the Authentication block are not rendered — every operation authenticates the same way, and the reader came for how to call one endpoint. Each operation carries **copyable Python / JavaScript / cURL samples**, with the cURL sample highlighted as shell.
+- **Two languages**: the page reads `?lang=` and switches both the interface copy and the API documentation. The Chinese spec is generated from the live schema by `scripts/export_openapi_specs.py`, with copy from `mineru/resources/serve/openapi.i18n.json`; re-run that script after changing an endpoint.
+- **Token**: `?token=` ticks "Use my access token" by default. While ticked, the token is sent as an `Authorization` header to the parse API and injected into the API tab's "Try" requests and code samples; while unticked the samples keep the `YOUR_TOKEN` placeholder rather than a dangling `Bearer `.
+- **Public operations**: `/v1/health`, `/v1/tiers`, `/v1/models` and `/v1/models/{model}` need no credential, and the documentation marks them public with no credential in their samples.
+
+For the frontend internals, how the spec is generated and what was changed in RapiDoc, see [mineru/resources/serve/README.md](https://github.com/opendatalab/MinerU/blob/master/mineru/resources/serve/README.md).
 
 Static assets carry `Cache-Control: no-cache`. They change with the engine image, and a heuristically cached copy would keep rendering a previous version's page after an upgrade, which is hard to diagnose from the outside.
 

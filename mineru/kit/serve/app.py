@@ -60,6 +60,28 @@ RENDER_PATH = "/render"
 #: works the same way for any job.
 DOWNLOAD_PATH = "/download"
 
+#: Serves the bilingual specs the API tab renders. Kept separate from FastAPI's
+#: own ``/openapi.json``: that one is the live schema and stays as it is, while
+#: these carry the display-only extras (per-language copy, code samples) and
+#: the ``SERVER_URL`` placeholder the page substitutes.
+OPENAPI_PATH = "/openapi"
+
+#: Spec files by language. Anything that is not ``en`` gets Chinese, matching
+#: the page's own language fallback.
+_OPENAPI_FILES: dict[str, str] = {
+    "en": "openapi.en.yaml",
+    "zh": "openapi.zh.yaml",
+}
+
+#: Placeholder the spec carries instead of a host, so the same file works
+#: directly and behind a platform proxy prefix.
+SERVER_URL_PLACEHOLDER = "SERVER_URL"
+
+#: Placeholder the code samples carry for the bearer token. The page replaces it
+#: with the real token when the user opts in, and leaves it as-is otherwise, so
+#: the sample always shows that authentication is expected.
+TOKEN_PLACEHOLDER = "YOUR_TOKEN"
+
 #: Bundled demo documents the playground offers so a first run needs no file.
 DEMO_FILES = ("demo1.pdf", "demo2.pdf")
 
@@ -169,6 +191,7 @@ def create_serving_app(
             CONFIG_PATH,
             RENDER_PATH,
             DOWNLOAD_PATH,
+            OPENAPI_PATH,
             "/index.html",
             "/index.css",
             "/app.mjs",
@@ -223,8 +246,44 @@ def create_serving_app(
                 "demo_documents": demo_documents(),
                 "demo_base": "./demo",
                 "rendered_downloads": list(renderable_formats()),
+                "openapi": {
+                    language: f".{OPENAPI_PATH}?lang={language}" for language in _OPENAPI_FILES
+                },
             }
         )
+
+    @application.get(OPENAPI_PATH, include_in_schema=False)
+    async def openapi_spec(request: Request) -> Response:
+        """Serve the bilingual spec the API tab renders.
+
+        FastAPI's own ``/openapi.json`` stays as it is: this route carries the
+        display-only extras (per-language copy, code samples) and substitutes
+        the two placeholders the page supplies, so one file works for every
+        deployment and shows the token the user opted into.
+
+        Query: ``lang`` (``en`` or ``zh``), ``SERVER_URL`` for the documented
+        server, ``token`` for the bearer value in the samples.
+        """
+        language = (request.query_params.get("lang") or "zh").strip().lower()
+        filename = _OPENAPI_FILES.get(language, _OPENAPI_FILES["zh"])
+        path = ASSETS_DIR / filename
+        if not path.is_file():
+            return JSONResponse(
+                {"error": f"spec file {filename} is missing from the installation"},
+                status_code=500,
+            )
+        spec = path.read_text(encoding="utf-8")
+        server_url = (request.query_params.get("SERVER_URL") or "").strip()
+        token = (request.query_params.get("token") or "").strip()
+        # Both placeholders stay when the caller supplies nothing: replacing
+        # them with empty strings would leave a blank server and a dangling
+        # "Bearer " in every sample, which reads as a broken document rather
+        # than as one waiting to be filled in.
+        if server_url:
+            spec = spec.replace(SERVER_URL_PLACEHOLDER, server_url)
+        if token:
+            spec = spec.replace(TOKEN_PLACEHOLDER, token)
+        return Response(content=spec, media_type="text/yaml; charset=utf-8")
 
     @application.post(RENDER_PATH, include_in_schema=False)
     async def render_preview(request: Request) -> JSONResponse:
@@ -369,6 +428,8 @@ __all__ = [
     "ASSETS_DIR",
     "CONFIG_PATH",
     "DEMO_FILES",
+    "DOWNLOAD_PATH",
+    "OPENAPI_PATH",
     "RENDER_PATH",
     "create_serving_app",
     "demo_documents",

@@ -65,6 +65,12 @@ window.MinerUSourceViewer = SourceViewer;
     return new URLSearchParams(window.location.search).get('token') || '';
   }
 
+  /* The page language follows ?lang= the way i18n.js does, so the Playground
+     copy and the API spec never disagree about which language is showing. */
+  function currentLanguage() {
+    return i18n.language === 'en' ? 'en' : 'zh';
+  }
+
   /* A token in the URL is the platform telling this page to use it, so the
      checkbox starts on. Leaving it off meant the token was silently ignored and
      every gated action looked like it had no credential at all. */
@@ -1078,9 +1084,15 @@ window.MinerUSourceViewer = SourceViewer;
       'mono-font': 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
       'show-header': 'false',
       layout: 'row',
-      'show-info': 'true',
+      'schema-style': 'table',
+      /* Every operation authenticates the same way, so the per-operation
+         authentication block and the engine's overall description are noise;
+         the reader came for how to call one endpoint. */
+      'show-info': 'false',
+      'allow-authentication': 'false',
+      'show-curl-before-try': 'true',
+      'response-area-height': '300',
       'allow-try': 'true',
-      'allow-authentication': 'true',
       'allow-spec-url-load': 'false',
       'allow-spec-file-load': 'false',
       'allow-server-selection': 'false',
@@ -1090,25 +1102,36 @@ window.MinerUSourceViewer = SourceViewer;
     Object.keys(attributes).forEach(function (name) {
       doc.setAttribute(name, attributes[name]);
     });
-    /* RapiDoc resolves relative URLs against the page, which behind the
-       platform's proxy is the engine itself. Hand it both the spec and the
-       documented server explicitly so "Try" calls the engine rather than the
-       platform, and so it works whether the page is at / or under a prefix. */
-    var base = window.location.pathname.replace(/\/$/, '');
-    doc.setAttribute('spec-url', './openapi.json');
-    doc.setAttribute('server-url', base || '/');
     section.appendChild(doc);
     /* RapiDoc writes sizing onto its parent in connectedCallback. Drop it: the
        stylesheet already sizes both, and a leftover 100vw/100vh is what made
        the API tab a full viewport tall while the Parse tab was not. */
     section.style.removeProperty('width');
     section.style.removeProperty('height');
-    applyApiToken();
+    loadSpec();
     return doc;
   }
 
-  /* RapiDoc reads `api-key-value` and attaches it to every "Try" request; the
-     value is only meaningful when the user opted in, matching the Parse tab. */
+  /* Point RapiDoc at the localized spec, with the origin it was opened from.
+
+     The spec carries a placeholder server and a placeholder token, so the same
+     file works directly and behind the platform's proxy prefix, and the samples
+     show whichever credential the user opted into. RapiDoc resolves relative
+     URLs against the page, which behind the proxy is the engine itself. */
+  function loadSpec() {
+    var doc = document.getElementById('rapidoc');
+    if (!doc) return;
+    var base = window.location.pathname.replace(/\/$/, '');
+    var params = new URLSearchParams();
+    params.set('lang', currentLanguage());
+    params.set('SERVER_URL', window.location.origin + base);
+    var value = token();
+    if (value) params.set('token', value);
+    doc.loadSpec('./openapi?' + params.toString());
+  }
+
+  /* RapiDoc reads `api-key-value` and attaches it to every "Try" request. The
+     samples carry the same credential, so a change reloads the spec too. */
   function applyApiToken() {
     var doc = document.getElementById('rapidoc');
     if (!doc) return;
@@ -1122,6 +1145,7 @@ window.MinerUSourceViewer = SourceViewer;
       doc.removeAttribute('api-key-location');
       doc.removeAttribute('api-key-value');
     }
+    loadSpec();
   }
 
   function switchTab(target) {

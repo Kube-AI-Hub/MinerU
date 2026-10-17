@@ -85,7 +85,7 @@ class TaskBackend(Protocol):
 
 
 class TaskStatusResponse(JobAsyncResponse):
-    """沿用 Job 字段，序列化为 task_id 并增加 V1 查询地址。"""
+    """Reuse the job fields, serialized as task_id with the V1 query URLs."""
 
     job_id: str = Field(alias="task_id", description="Task ID, used to poll, cancel and fetch results.")
     status_url: str = Field(description="URL to poll this task's status.")
@@ -93,7 +93,7 @@ class TaskStatusResponse(JobAsyncResponse):
 
 
 class TaskFileContent(JobFileResult):
-    """内联文本产物，同时保留既有文件状态、错误和资源引用。"""
+    """Inline text artifacts, keeping the per-file status, error and resource refs."""
 
     content: dict[str, Any] = Field(
         default_factory=dict,
@@ -102,7 +102,7 @@ class TaskFileContent(JobFileResult):
 
 
 class TaskResultResponse(TaskStatusResponse):
-    """描述可直接消费的 JSON 解析结果。"""
+    """A parse result that can be consumed directly."""
 
     files: list[TaskFileContent] = Field(description="One entry per submitted document, with inline content.")
 
@@ -434,7 +434,7 @@ def build_task_router(factory: Callable[[Request], TaskBackend]) -> APIRouter:
 
     @router.post("/tasks", status_code=202, response_model=TaskStatusResponse, openapi_extra=_request_schema())
     async def create_task(request: Request) -> Response:
-        """提交任务后立即返回公共 ID，缓存命中时不读取请求主体。"""
+        """Submit the job and return its public ID immediately; a cache hit skips reading the body."""
         backend = factory(request)
         try:
             with tempfile.TemporaryDirectory(prefix="mineru-task-") as directory:
@@ -455,7 +455,7 @@ def build_task_router(factory: Callable[[Request], TaskBackend]) -> APIRouter:
         task_id: Annotated[str, PathParam(description="Task ID (job_...)", examples=["job_1324359f69a657f22b833071"])],
         request: Request,
     ) -> Response:
-        """查询与 V1 Job 共用的任务记录。"""
+        """Retrieve the task record shared with the V1 job."""
         return JSONResponse(task_payload(await factory(request).get(task_id)))
 
     @router.delete("/tasks/{task_id}")
@@ -463,7 +463,7 @@ def build_task_router(factory: Callable[[Request], TaskBackend]) -> APIRouter:
         task_id: Annotated[str, PathParam(description="Task ID (job_...)", examples=["job_1324359f69a657f22b833071"])],
         request: Request,
     ) -> Response:
-        """通过后台已有取消机制取消任务。"""
+        """Cancel the task through the existing background cancellation."""
         return JSONResponse(task_payload(await factory(request).cancel(task_id)))
 
     @router.get(
@@ -488,7 +488,7 @@ def build_task_router(factory: Callable[[Request], TaskBackend]) -> APIRouter:
             ),
         ] = "json",
     ) -> Response:
-        """根据任务终态返回内联 JSON 或既有 ZIP 产物。"""
+        """Return inline JSON or the artifact archive, depending on the task's terminal state."""
         backend = factory(request)
         return await build_task_result(await backend.get(task_id), backend, response_format)
 
@@ -523,7 +523,7 @@ def build_task_router(factory: Callable[[Request], TaskBackend]) -> APIRouter:
             ),
         ] = 300,
     ) -> Response:
-        """同步包装共享异步任务，等待超时不取消后台工作。"""
+        """Wrap the shared async task synchronously; a wait timeout does not cancel the work."""
         backend = factory(request)
         try:
             with tempfile.TemporaryDirectory(prefix="mineru-task-") as directory:

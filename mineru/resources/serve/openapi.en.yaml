@@ -1,0 +1,3388 @@
+openapi: 3.1.0
+info:
+  title: MinerU API
+  version: 1.0.0
+paths:
+  /v1/health:
+    get:
+      tags:
+      - Health
+      summary: Get Health
+      description: Report readiness and what this server can do.
+      operationId: get_health_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: 'import requests
+
+
+          url = "SERVER_URL/v1/health"
+
+          response = requests.get(url)
+
+
+          print(response.status_code)
+
+          print(response.json())'
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/health\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n});\n\n\
+          const data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: curl -X GET 'SERVER_URL/v1/health'
+  /v1/models:
+    get:
+      tags:
+      - Models
+      summary: List Models
+      description: List the model IDs this server accepts.
+      operationId: list_models_v1_models_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelListResponse'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: 'import requests
+
+
+          url = "SERVER_URL/v1/models"
+
+          response = requests.get(url)
+
+
+          print(response.status_code)
+
+          print(response.json())'
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/models\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n});\n\n\
+          const data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: curl -X GET 'SERVER_URL/v1/models'
+  /v1/models/{model}:
+    get:
+      tags:
+      - Models
+      summary: Get Model
+      description: Retrieve one advertised model by ID.
+      operationId: get_model_v1_models__model__get
+      security: []
+      parameters:
+      - name: model
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Model ID
+          examples:
+          - mineru-4.0.12
+          title: Model
+        description: Model ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelInfo'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: 'import requests
+
+
+          url = "SERVER_URL/v1/models/{model}"
+
+          response = requests.get(url)
+
+
+          print(response.status_code)
+
+          print(response.json())'
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/models/{model}\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n\
+          });\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: curl -X GET 'SERVER_URL/v1/models/{model}'
+  /v1/tiers:
+    get:
+      tags:
+      - Tiers
+      summary: List Tiers
+      description: List the tiers this server can serve.
+      operationId: list_tiers_v1_tiers_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TierListResponse'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: 'import requests
+
+
+          url = "SERVER_URL/v1/tiers"
+
+          response = requests.get(url)
+
+
+          print(response.status_code)
+
+          print(response.json())'
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tiers\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n});\n\n\
+          const data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: curl -X GET 'SERVER_URL/v1/tiers'
+  /v1/uploads:
+    post:
+      tags:
+      - Uploads
+      summary: Create Upload
+      description: Open an upload session, then PUT the bytes to the returned URL.
+      operationId: create_upload_v1_uploads_post
+      requestBody:
+        description: Declares the file to upload; the bytes follow in a separate PUT.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUploadRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request Entity Too Large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\"\
+          ,\n}\npayload = {\n    \"filename\": \"string\",\n    \"bytes\": 0,\n    \"mime_type\": \"string\",\n    \"purpose\"\
+          : \"parse\",\n    \"sha256sum\": \"string\",\n    \"expires_after\": {\n        \"anchor\": \"created_at\",\n  \
+          \      \"seconds\": 3600\n    }\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\n\nprint(response.status_code)\n\
+          print(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads\";\nconst payload = {\n  \"filename\": \"string\",\n  \"bytes\": 0,\n\
+          \  \"mime_type\": \"string\",\n  \"purpose\": \"parse\",\n  \"sha256sum\": \"string\",\n  \"expires_after\": {\n\
+          \    \"anchor\": \"created_at\",\n    \"seconds\": 3600\n  }\n};\n\nconst response = await fetch(url, {\n  method:\
+          \ \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\",\n    Authorization: \"Bearer YOUR_TOKEN\"\
+          ,\n  },\n  body: JSON.stringify(payload),\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/uploads' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n  -H \"Content-Type:\
+          \ application/json\" \\\n  -d '{\"filename\": \"string\", \"bytes\": 0, \"mime_type\": \"string\", \"purpose\":\
+          \ \"parse\", \"sha256sum\": \"string\", \"expires_after\": {\"anchor\": \"created_at\", \"seconds\": 3600}}'"
+  /v1/uploads/{upload_id}:
+    get:
+      tags:
+      - Uploads
+      summary: Get Upload
+      description: Retrieve an Upload by ID.
+      operationId: get_upload_v1_uploads__upload_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Upload ID (upload_...)
+          examples:
+          - upload_3f9c2b1a
+          title: Upload Id
+        description: Upload ID (upload_...)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads/{upload_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads/{upload_id}\";\n\nconst response = await fetch(url, {\n  method: \"GET\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/uploads/{upload_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/uploads/{upload_id}/content:
+    put:
+      tags:
+      - Uploads
+      summary: Upload Content
+      description: Upload raw bytes for an upload (OpenAI-compatible).
+      operationId: upload_content_v1_uploads__upload_id__content_put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Upload ID
+          examples:
+          - upload_3f9c2b1a
+          title: Upload Id
+        description: Upload ID
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              contentMediaType: application/octet-stream
+              description: Raw file bytes for this upload session.
+              title: Data
+        description: Raw file bytes for this upload session.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Request Entity Too Large
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads/{upload_id}/content\"\nheaders = {\n    \"Authorization\"\
+          : \"Bearer YOUR_TOKEN\",\n    \"Content-Type\": \"application/octet-stream\",\n}\nwith open(\"document.pdf\", \"\
+          rb\") as source:\n    response = requests.put(url, data=source, headers=headers)\n\nprint(response.status_code)\n\
+          print(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads/{upload_id}/content\";\nconst file = document.querySelector('input[type=\"\
+          file\"]').files[0];\n\nconst response = await fetch(url, {\n  method: \"PUT\",\n  headers: {\n    Authorization:\
+          \ \"Bearer YOUR_TOKEN\",\n    \"Content-Type\": \"application/octet-stream\",\n  },\n  body: file,\n});\n\nconst\
+          \ data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X PUT 'SERVER_URL/v1/uploads/{upload_id}/content' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n\
+          \  -H \"Content-Type: application/octet-stream\" \\\n  --data-binary @document.pdf"
+  /v1/uploads/{upload_id}/complete:
+    post:
+      tags:
+      - Uploads
+      summary: Complete Upload
+      description: Complete an upload, creating the File object.
+      operationId: complete_upload_v1_uploads__upload_id__complete_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Upload ID
+          examples:
+          - upload_3f9c2b1a
+          title: Upload Id
+        description: Upload ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - $ref: '#/components/schemas/CompleteUploadRequest'
+              - type: 'null'
+              title: Body
+        required: false
+        description: 'Optional: assert the uploaded content''s SHA-256 before the upload is finalized.'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '413':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Request Entity Too Large
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads/{upload_id}/complete\"\nheaders = {\n    \"Authorization\"\
+          : \"Bearer YOUR_TOKEN\",\n}\npayload = {\n    \"sha256sum\": \"string\"\n}\n\nresponse = requests.post(url, json=payload,\
+          \ headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads/{upload_id}/complete\";\nconst payload = {\n  \"sha256sum\": \"string\"\
+          \n};\n\nconst response = await fetch(url, {\n  method: \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\"\
+          ,\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n  body: JSON.stringify(payload),\n});\n\nconst data = await\
+          \ response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/uploads/{upload_id}/complete' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\
+          \n  -H \"Content-Type: application/json\" \\\n  -d '{\"sha256sum\": \"string\"}'"
+  /v1/uploads/{upload_id}/cancel:
+    post:
+      tags:
+      - Uploads
+      summary: Cancel Upload
+      description: Cancel an in-progress upload.
+      operationId: cancel_upload_v1_uploads__upload_id__cancel_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: upload_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Upload ID
+          examples:
+          - upload_3f9c2b1a
+          title: Upload Id
+        description: Upload ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/uploads/{upload_id}/cancel\"\nheaders = {\n    \"Authorization\"\
+          : \"Bearer YOUR_TOKEN\",\n}\nresponse = requests.post(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/uploads/{upload_id}/cancel\";\n\nconst response = await fetch(url, {\n  method:\
+          \ \"POST\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\n\
+          console.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/uploads/{upload_id}/cancel' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/files:
+    get:
+      tags:
+      - Files
+      summary: List Files
+      description: List files for the current tenant.
+      operationId: list_files_v1_files_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: after
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Cursor: last_id from previous page'
+          examples:
+          - file-0cf8b284ab9934cb7dfb68e0
+          title: After
+        description: 'Cursor: last_id from previous page'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          description: Items per page
+          examples:
+          - 100
+          default: 100
+          title: Limit
+        description: Items per page
+      - name: order
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          description: Sort by created_at
+          examples:
+          - desc
+          default: desc
+          title: Order
+        description: Sort by created_at
+      - name: purpose
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - parse
+            - parse_output
+            - input_image
+            type: string
+          - type: 'null'
+          description: Only return files with this purpose
+          examples:
+          - parse_output
+          title: Purpose
+        description: Only return files with this purpose
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/files?after=file-0cf8b284ab9934cb7dfb68e0&limit=100&order=desc&purpose=parse_output\"\
+          \nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\
+          \nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/files?after=file-0cf8b284ab9934cb7dfb68e0&limit=100&order=desc&purpose=parse_output\"\
+          ;\n\nconst response = await fetch(url, {\n  method: \"GET\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\"\
+          ,\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/files?after=file-0cf8b284ab9934cb7dfb68e0&limit=100&order=desc&purpose=parse_output'\
+          \ \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/files/{file_id}:
+    get:
+      tags:
+      - Files
+      summary: Get File
+      description: Retrieve file metadata.
+      operationId: get_file_v1_files__file_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: File ID (file-...)
+          examples:
+          - file-0cf8b284ab9934cb7dfb68e0
+          title: File Id
+        description: File ID (file-...)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileObjectModel'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/files/{file_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/files/{file_id}\";\n\nconst response = await fetch(url, {\n  method: \"GET\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/files/{file_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+    delete:
+      tags:
+      - Files
+      summary: Delete File
+      description: Delete a file from the current tenant view.
+      operationId: delete_file_v1_files__file_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: File ID
+          examples:
+          - file-0cf8b284ab9934cb7dfb68e0
+          title: File Id
+        description: File ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDeletionResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/files/{file_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.delete(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/files/{file_id}\";\n\nconst response = await fetch(url, {\n  method: \"DELETE\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X DELETE 'SERVER_URL/v1/files/{file_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/files/{file_id}/content:
+    get:
+      tags:
+      - Files
+      summary: Get File Content
+      description: Download parse-output content.
+      operationId: get_file_content_v1_files__file_id__content_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: File ID
+          examples:
+          - file-0cf8b284ab9934cb7dfb68e0
+          title: File Id
+        description: File ID
+      responses:
+        '200':
+          description: File content
+          content:
+            application/json:
+              schema: {}
+        '302':
+          description: Redirect to CDN (cloud mode)
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/files/{file_id}/content\"\nheaders = {\n    \"Authorization\": \"\
+          Bearer YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/files/{file_id}/content\";\n\nconst response = await fetch(url, {\n  method:\
+          \ \"GET\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\n\
+          console.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/files/{file_id}/content' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/parse/jobs:
+    post:
+      tags:
+      - Jobs
+      summary: Create Job
+      description: Create a V1 job through the shared task service, keeping the response shape.
+      operationId: create_job_v1_parse_jobs_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJobRequest'
+        description: Documents to parse, their sources, and the tier and output formats to use.
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAsyncResponse'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Too Many Requests
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Service Unavailable
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/parse/jobs\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\"\
+          ,\n}\npayload = {\n    \"files\": [\n        {\n            \"source\": {\n                \"type\": \"file_id\"\
+          ,\n                \"file_id\": \"file-0cf8b284ab9934cb7dfb68e0\"\n            },\n            \"page_range\": \"\
+          1-5,8,r3-r1\"\n        }\n    ],\n    \"tier\": \"standard\",\n    \"ocr_mode\": \"auto\",\n    \"output_formats\"\
+          : [\n        \"markdown\",\n        \"middle_json\"\n    ],\n    \"callback\": {\n        \"url\": \"string\",\n\
+          \        \"secret\": \"string\"\n    }\n}\n\nresponse = requests.post(url, json=payload, headers=headers)\n\nprint(response.status_code)\n\
+          print(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/parse/jobs\";\nconst payload = {\n  \"files\": [\n    {\n      \"source\": {\n\
+          \        \"type\": \"file_id\",\n        \"file_id\": \"file-0cf8b284ab9934cb7dfb68e0\"\n      },\n      \"page_range\"\
+          : \"1-5,8,r3-r1\"\n    }\n  ],\n  \"tier\": \"standard\",\n  \"ocr_mode\": \"auto\",\n  \"output_formats\": [\n\
+          \    \"markdown\",\n    \"middle_json\"\n  ],\n  \"callback\": {\n    \"url\": \"string\",\n    \"secret\": \"string\"\
+          \n  }\n};\n\nconst response = await fetch(url, {\n  method: \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\"\
+          ,\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n  body: JSON.stringify(payload),\n});\n\nconst data = await\
+          \ response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/parse/jobs' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n  -H \"Content-Type:\
+          \ application/json\" \\\n  -d '{\"files\": [{\"source\": {\"type\": \"file_id\", \"file_id\": \"file-0cf8b284ab9934cb7dfb68e0\"\
+          }, \"page_range\": \"1-5,8,r3-r1\"}], \"tier\": \"standard\", \"ocr_mode\": \"auto\", \"output_formats\": [\"markdown\"\
+          , \"middle_json\"], \"callback\": {\"url\": \"string\", \"secret\": \"string\"}}'"
+    get:
+      tags:
+      - Jobs
+      summary: List Jobs
+      description: List jobs for the current tenant.
+      operationId: list_jobs_v1_parse_jobs_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by status (comma-separated)
+          examples:
+          - completed,failed
+          title: Status
+        description: Filter by status (comma-separated)
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: Items per page
+          examples:
+          - 20
+          default: 20
+          title: Limit
+        description: Items per page
+      - name: after
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Pagination cursor (last_id from previous page)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: After
+        description: Pagination cursor (last_id from previous page)
+      - name: order
+        in: query
+        required: false
+        schema:
+          enum:
+          - asc
+          - desc
+          type: string
+          description: Sort by created_at
+          examples:
+          - desc
+          default: desc
+          title: Order
+        description: Sort by created_at
+      - name: created_after
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: ISO-8601 lower bound for created_at
+          examples:
+          - '2026-01-01T00:00:00Z'
+          title: Created After
+        description: ISO-8601 lower bound for created_at
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/parse/jobs?status=completed%2Cfailed&limit=20&after=job_1324359f69a657f22b833071&order=desc&created_after=2026-01-01T00%3A00%3A00Z\"\
+          \nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\
+          \nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/parse/jobs?status=completed%2Cfailed&limit=20&after=job_1324359f69a657f22b833071&order=desc&created_after=2026-01-01T00%3A00%3A00Z\"\
+          ;\n\nconst response = await fetch(url, {\n  method: \"GET\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\"\
+          ,\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/parse/jobs?status=completed%2Cfailed&limit=20&after=job_1324359f69a657f22b833071&order=desc&created_after=2026-01-01T00%3A00%3A00Z'\
+          \ \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/parse/jobs/{job_id}:
+    get:
+      tags:
+      - Jobs
+      summary: Get Job
+      description: Retrieve a job's current status and results.
+      operationId: get_job_v1_parse_jobs__job_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Job ID (job_...)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Job Id
+        description: Job ID (job_...)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobAsyncResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/parse/jobs/{job_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/parse/jobs/{job_id}\";\n\nconst response = await fetch(url, {\n  method: \"GET\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/parse/jobs/{job_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+    delete:
+      tags:
+      - Jobs
+      summary: Cancel Job
+      description: Cancel a queued or running job.
+      operationId: cancel_job_v1_parse_jobs__job_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: job_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Job ID
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Job Id
+        description: Job ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCancelResponse'
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/parse/jobs/{job_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.delete(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/parse/jobs/{job_id}\";\n\nconst response = await fetch(url, {\n  method: \"DELETE\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X DELETE 'SERVER_URL/v1/parse/jobs/{job_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/usage:
+    get:
+      tags:
+      - Usage
+      summary: Get Usage
+      description: Query current usage and limits.
+      operationId: get_usage_v1_usage_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageResponse'
+      security:
+      - HTTPBearer: []
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/usage\"\nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\"\
+          ,\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/usage\";\n\nconst response = await fetch(url, {\n  method: \"GET\",\n  headers:\
+          \ {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/usage' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/tasks:
+    post:
+      tags:
+      - Tasks
+      summary: Create Task
+      description: Submit the job and return its public ID immediately; a cache hit skips reading the body.
+      operationId: create_task_v1_tasks_post
+      security:
+      - HTTPBearer: []
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+      requestBody:
+        required: true
+        description: 'The document to parse. Send one of: multipart/form-data with `files` fields, application/octet-stream
+          for a single raw file (with query parameters), or application/json with a CreateJobRequest body.'
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - files
+              properties:
+                files:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: string
+                    format: binary
+                  description: One or more documents to parse, in order.
+          application/json:
+            schema:
+              additionalProperties: false
+              description: Submit documents for parsing.
+              properties:
+                files:
+                  description: Documents to parse, in order.
+                  items:
+                    additionalProperties: false
+                    description: One document to parse, with an optional page selection.
+                    properties:
+                      source:
+                        description: Where the document comes from; `type` selects the source variant.
+                        discriminator:
+                          propertyName: type
+                        oneOf:
+                        - additionalProperties: false
+                          description: Reference bytes that were uploaded earlier.
+                          properties:
+                            type:
+                              const: file_id
+                              default: file_id
+                              description: Selects the file_id source variant.
+                              title: Type
+                              type: string
+                            file_id:
+                              description: ID of a completed upload's File object.
+                              title: File Id
+                              type: string
+                          required:
+                          - file_id
+                          title: FileIdSource
+                          type: object
+                        - additionalProperties: false
+                          description: Let the server fetch the document itself.
+                          properties:
+                            type:
+                              const: url
+                              default: url
+                              description: Selects the url source variant.
+                              title: Type
+                              type: string
+                            url:
+                              description: HTTP(S) URL the server downloads before parsing.
+                              title: Url
+                              type: string
+                          required:
+                          - url
+                          title: UrlSource
+                          type: object
+                        - additionalProperties: false
+                          description: Carry the document in the request body as base64.
+                          properties:
+                            type:
+                              const: inline
+                              default: inline
+                              description: Selects the inline source variant.
+                              title: Type
+                              type: string
+                            name:
+                              description: File name for the inline content; the suffix selects the parser.
+                              minLength: 1
+                              title: Name
+                              type: string
+                            data:
+                              description: Base64-encoded file content.
+                              minLength: 1
+                              title: Data
+                              type: string
+                          required:
+                          - name
+                          - data
+                          title: InlineSource
+                          type: object
+                        - additionalProperties: false
+                          description: Read a path on the server's own filesystem.
+                          properties:
+                            type:
+                              const: local
+                              default: local
+                              description: Selects the local source variant.
+                              title: Type
+                              type: string
+                            path:
+                              description: Path on the server; only accepted when local sources are enabled.
+                              minLength: 1
+                              title: Path
+                              type: string
+                          required:
+                          - path
+                          title: LocalSource
+                          type: object
+                        title: Source
+                      page_range:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        description: 'PDF page selection: 1-based inclusive ranges, e.g. ''1-5,8,r3-r1''; ''r1'' is the last
+                          page and ''all'' selects every page. Blank means unspecified. Selections are sorted and deduplicated;
+                          out-of-bounds pages are omitted. Reversed ranges, ''~'' and negative page numbers are invalid.'
+                        examples:
+                        - 1-5,8,r3-r1
+                        - all
+                        title: Page Range
+                    required:
+                    - source
+                    title: JobFileEntry
+                    type: object
+                  maxItems: 100
+                  minItems: 1
+                  title: Files
+                  type: array
+                tier:
+                  anyOf:
+                  - enum:
+                    - flash
+                    - basic
+                    - standard
+                    - advanced
+                    type: string
+                  - type: 'null'
+                  description: 'Quality tier: flash, basic, standard or advanced. Omit to use the server''s default.'
+                  examples:
+                  - standard
+                  title: Tier
+                ocr_mode:
+                  default: auto
+                  description: 'OCR mode for this parse job: auto-detect, native text, or forced OCR.'
+                  enum:
+                  - auto
+                  - txt
+                  - ocr
+                  examples:
+                  - auto
+                  title: Ocr Mode
+                  type: string
+                output_formats:
+                  default:
+                  - markdown
+                  description: 'Artifacts to produce: markdown, middle_json, structured_content, zip.'
+                  examples:
+                  - - markdown
+                    - middle_json
+                  items:
+                    type: string
+                  title: Output Formats
+                  type: array
+                callback:
+                  anyOf:
+                  - additionalProperties: false
+                    description: Where to deliver a webhook when the job reaches a terminal state.
+                    properties:
+                      url:
+                        description: HTTP(S) URL the server posts the finished job to.
+                        title: Url
+                        type: string
+                      secret:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        description: Shared secret used to sign the callback.
+                        title: Secret
+                    required:
+                    - url
+                    title: CallbackConfig
+                    type: object
+                  - type: 'null'
+                  description: Webhook to call when the job finishes; local servers reject it.
+              required:
+              - files
+              title: CreateJobRequest
+              type: object
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+            description: Raw file bytes; `filename` is required as a query parameter.
+      parameters:
+      - name: tier
+        in: query
+        required: false
+        description: 'Quality tier: flash, basic, standard or advanced. Omit to use the server''s default.'
+        schema:
+          anyOf:
+          - enum:
+            - flash
+            - basic
+            - standard
+            - advanced
+            type: string
+          - type: 'null'
+          examples:
+          - standard
+          title: Tier
+      - name: ocr_mode
+        in: query
+        required: false
+        description: 'OCR mode: auto-detect, native text only, or forced OCR.'
+        schema:
+          default: auto
+          enum:
+          - auto
+          - txt
+          - ocr
+          examples:
+          - auto
+          title: Ocr Mode
+          type: string
+      - name: page_range
+        in: query
+        required: false
+        description: 'PDF page selection: 1-based inclusive ranges, e.g. ''1-5,8,r3-r1''; ''r1'' is the last page and ''all''
+          selects every page. Blank means unspecified. Selections are sorted and deduplicated; out-of-bounds pages are omitted.
+          Reversed ranges, ''~'' and negative page numbers are invalid.'
+        schema:
+          default: ''
+          examples:
+          - 1-5,8,r3-r1
+          - all
+          title: Page Range
+          type: string
+      - name: output_formats
+        in: query
+        required: false
+        description: 'Artifacts to produce: markdown, middle_json, structured_content, zip.'
+        schema:
+          examples:
+          - - markdown
+            - structured_content
+          items:
+            type: string
+          title: Output Formats
+          type: array
+      - name: filename
+        in: query
+        required: false
+        description: 'Raw uploads only: file name, whose suffix selects the parser.'
+        schema:
+          anyOf:
+          - minLength: 1
+            type: string
+          - type: 'null'
+          examples:
+          - document.pdf
+          title: Filename
+      - name: sha256sum
+        in: query
+        required: false
+        description: 'Raw uploads only: lowercase hex SHA-256, so identical bytes can be reused.'
+        schema:
+          anyOf:
+          - pattern: ^[a-f0-9]{64}$
+            type: string
+          - type: 'null'
+          examples:
+          - 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+          title: Sha256Sum
+      - name: Content-Length
+        in: header
+        required: false
+        description: Required for application/octet-stream; must match actual file bytes.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 209715200
+          examples:
+          - 1048576
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/tasks?tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content\"\
+          \nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nfiles = {\"files\": (\"document.pdf\", open(\"\
+          document.pdf\", \"rb\"), \"application/pdf\")}\n\nresponse = requests.post(url, files=files, headers=headers)\n\n\
+          print(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tasks?tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content\"\
+          ;\nconst form = new FormData();\nform.append(\"files\", fileInput.files[0], \"document.pdf\");\n\nconst response\
+          \ = await fetch(url, {\n  method: \"POST\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n  body:\
+          \ form,\n});\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/tasks?tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content'\
+          \ \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n  -F \"files=@document.pdf\""
+  /v1/tasks/{task_id}:
+    get:
+      tags:
+      - Tasks
+      summary: Get Task
+      description: Retrieve the task record shared with the V1 job.
+      operationId: get_task_v1_tasks__task_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Task ID (job_...)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Task Id
+        description: Task ID (job_...)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/tasks/{task_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tasks/{task_id}\";\n\nconst response = await fetch(url, {\n  method: \"GET\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/tasks/{task_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+    delete:
+      tags:
+      - Tasks
+      summary: Cancel Task
+      description: Cancel the task through the existing background cancellation.
+      operationId: cancel_task_v1_tasks__task_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Task ID (job_...)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Task Id
+        description: Task ID (job_...)
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/tasks/{task_id}\"\nheaders = {\n    \"Authorization\": \"Bearer\
+          \ YOUR_TOKEN\",\n}\nresponse = requests.delete(url, headers=headers)\n\nprint(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tasks/{task_id}\";\n\nconst response = await fetch(url, {\n  method: \"DELETE\"\
+          ,\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await response.json();\nconsole.log(response.status,\
+          \ data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X DELETE 'SERVER_URL/v1/tasks/{task_id}' \\\n  -H \"Authorization: Bearer YOUR_TOKEN\""
+  /v1/tasks/{task_id}/result:
+    get:
+      tags:
+      - Tasks
+      summary: Get Result
+      description: Return inline JSON or the artifact archive, depending on the task's terminal state.
+      operationId: get_result_v1_tasks__task_id__result_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          description: Task ID (job_...)
+          examples:
+          - job_1324359f69a657f22b833071
+          title: Task Id
+        description: Task ID (job_...)
+      - name: response_format
+        in: query
+        required: false
+        schema:
+          enum:
+          - json
+          - zip
+          type: string
+          description: 'Result shape: "json" inlines the content, "zip" returns the artifact archive.'
+          examples:
+          - json
+          default: json
+          title: Response Format
+        description: 'Result shape: "json" inlines the content, "zip" returns the artifact archive.'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResultResponse'
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+          description: Accepted
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/tasks/{task_id}/result?response_format=json\"\nheaders = {\n   \
+          \ \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nresponse = requests.get(url, headers=headers)\n\nprint(response.status_code)\n\
+          print(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/tasks/{task_id}/result?response_format=json\";\n\nconst response = await fetch(url,\
+          \ {\n  method: \"GET\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n});\n\nconst data = await\
+          \ response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X GET 'SERVER_URL/v1/tasks/{task_id}/result?response_format=json' \\\n  -H \"Authorization: Bearer\
+          \ YOUR_TOKEN\""
+  /v1/file_parse:
+    post:
+      tags:
+      - Tasks
+      summary: File Parse
+      description: Wrap the shared async task synchronously; a wait timeout does not cancel the work.
+      operationId: file_parse_v1_file_parse_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: response_format
+        in: query
+        required: false
+        schema:
+          enum:
+          - json
+          - zip
+          type: string
+          description: 'Result shape: "json" inlines the content, "zip" returns the artifact archive.'
+          examples:
+          - json
+          default: json
+          title: Response Format
+        description: 'Result shape: "json" inlines the content, "zip" returns the artifact archive.'
+      - name: wait_timeout
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 3600
+          minimum: 1
+          description: Seconds to wait for the job before returning its current status; the job keeps running.
+          examples:
+          - 300
+          default: 300
+          title: Wait Timeout
+        description: Seconds to wait for the job before returning its current status; the job keeps running.
+      - name: tier
+        in: query
+        required: false
+        description: 'Quality tier: flash, basic, standard or advanced. Omit to use the server''s default.'
+        schema:
+          anyOf:
+          - enum:
+            - flash
+            - basic
+            - standard
+            - advanced
+            type: string
+          - type: 'null'
+          examples:
+          - standard
+          title: Tier
+      - name: ocr_mode
+        in: query
+        required: false
+        description: 'OCR mode: auto-detect, native text only, or forced OCR.'
+        schema:
+          default: auto
+          enum:
+          - auto
+          - txt
+          - ocr
+          examples:
+          - auto
+          title: Ocr Mode
+          type: string
+      - name: page_range
+        in: query
+        required: false
+        description: 'PDF page selection: 1-based inclusive ranges, e.g. ''1-5,8,r3-r1''; ''r1'' is the last page and ''all''
+          selects every page. Blank means unspecified. Selections are sorted and deduplicated; out-of-bounds pages are omitted.
+          Reversed ranges, ''~'' and negative page numbers are invalid.'
+        schema:
+          default: ''
+          examples:
+          - 1-5,8,r3-r1
+          - all
+          title: Page Range
+          type: string
+      - name: output_formats
+        in: query
+        required: false
+        description: 'Artifacts to produce: markdown, middle_json, structured_content, zip.'
+        schema:
+          examples:
+          - - markdown
+            - structured_content
+          items:
+            type: string
+          title: Output Formats
+          type: array
+      - name: filename
+        in: query
+        required: false
+        description: 'Raw uploads only: file name, whose suffix selects the parser.'
+        schema:
+          anyOf:
+          - minLength: 1
+            type: string
+          - type: 'null'
+          examples:
+          - document.pdf
+          title: Filename
+      - name: sha256sum
+        in: query
+        required: false
+        description: 'Raw uploads only: lowercase hex SHA-256, so identical bytes can be reused.'
+        schema:
+          anyOf:
+          - pattern: ^[a-f0-9]{64}$
+            type: string
+          - type: 'null'
+          examples:
+          - 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+          title: Sha256Sum
+      - name: Content-Length
+        in: header
+        required: false
+        description: Required for application/octet-stream; must match actual file bytes.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 209715200
+          examples:
+          - 1048576
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResultResponse'
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+          description: Accepted
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      requestBody:
+        required: true
+        description: 'The document to parse. Send one of: multipart/form-data with `files` fields, application/octet-stream
+          for a single raw file (with query parameters), or application/json with a CreateJobRequest body.'
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+              - files
+              properties:
+                files:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: string
+                    format: binary
+                  description: One or more documents to parse, in order.
+          application/json:
+            schema:
+              additionalProperties: false
+              description: Submit documents for parsing.
+              properties:
+                files:
+                  description: Documents to parse, in order.
+                  items:
+                    additionalProperties: false
+                    description: One document to parse, with an optional page selection.
+                    properties:
+                      source:
+                        description: Where the document comes from; `type` selects the source variant.
+                        discriminator:
+                          propertyName: type
+                        oneOf:
+                        - additionalProperties: false
+                          description: Reference bytes that were uploaded earlier.
+                          properties:
+                            type:
+                              const: file_id
+                              default: file_id
+                              description: Selects the file_id source variant.
+                              title: Type
+                              type: string
+                            file_id:
+                              description: ID of a completed upload's File object.
+                              title: File Id
+                              type: string
+                          required:
+                          - file_id
+                          title: FileIdSource
+                          type: object
+                        - additionalProperties: false
+                          description: Let the server fetch the document itself.
+                          properties:
+                            type:
+                              const: url
+                              default: url
+                              description: Selects the url source variant.
+                              title: Type
+                              type: string
+                            url:
+                              description: HTTP(S) URL the server downloads before parsing.
+                              title: Url
+                              type: string
+                          required:
+                          - url
+                          title: UrlSource
+                          type: object
+                        - additionalProperties: false
+                          description: Carry the document in the request body as base64.
+                          properties:
+                            type:
+                              const: inline
+                              default: inline
+                              description: Selects the inline source variant.
+                              title: Type
+                              type: string
+                            name:
+                              description: File name for the inline content; the suffix selects the parser.
+                              minLength: 1
+                              title: Name
+                              type: string
+                            data:
+                              description: Base64-encoded file content.
+                              minLength: 1
+                              title: Data
+                              type: string
+                          required:
+                          - name
+                          - data
+                          title: InlineSource
+                          type: object
+                        - additionalProperties: false
+                          description: Read a path on the server's own filesystem.
+                          properties:
+                            type:
+                              const: local
+                              default: local
+                              description: Selects the local source variant.
+                              title: Type
+                              type: string
+                            path:
+                              description: Path on the server; only accepted when local sources are enabled.
+                              minLength: 1
+                              title: Path
+                              type: string
+                          required:
+                          - path
+                          title: LocalSource
+                          type: object
+                        title: Source
+                      page_range:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        description: 'PDF page selection: 1-based inclusive ranges, e.g. ''1-5,8,r3-r1''; ''r1'' is the last
+                          page and ''all'' selects every page. Blank means unspecified. Selections are sorted and deduplicated;
+                          out-of-bounds pages are omitted. Reversed ranges, ''~'' and negative page numbers are invalid.'
+                        examples:
+                        - 1-5,8,r3-r1
+                        - all
+                        title: Page Range
+                    required:
+                    - source
+                    title: JobFileEntry
+                    type: object
+                  maxItems: 100
+                  minItems: 1
+                  title: Files
+                  type: array
+                tier:
+                  anyOf:
+                  - enum:
+                    - flash
+                    - basic
+                    - standard
+                    - advanced
+                    type: string
+                  - type: 'null'
+                  description: 'Quality tier: flash, basic, standard or advanced. Omit to use the server''s default.'
+                  examples:
+                  - standard
+                  title: Tier
+                ocr_mode:
+                  default: auto
+                  description: 'OCR mode for this parse job: auto-detect, native text, or forced OCR.'
+                  enum:
+                  - auto
+                  - txt
+                  - ocr
+                  examples:
+                  - auto
+                  title: Ocr Mode
+                  type: string
+                output_formats:
+                  default:
+                  - markdown
+                  description: 'Artifacts to produce: markdown, middle_json, structured_content, zip.'
+                  examples:
+                  - - markdown
+                    - middle_json
+                  items:
+                    type: string
+                  title: Output Formats
+                  type: array
+                callback:
+                  anyOf:
+                  - additionalProperties: false
+                    description: Where to deliver a webhook when the job reaches a terminal state.
+                    properties:
+                      url:
+                        description: HTTP(S) URL the server posts the finished job to.
+                        title: Url
+                        type: string
+                      secret:
+                        anyOf:
+                        - type: string
+                        - type: 'null'
+                        description: Shared secret used to sign the callback.
+                        title: Secret
+                    required:
+                    - url
+                    title: CallbackConfig
+                    type: object
+                  - type: 'null'
+                  description: Webhook to call when the job finishes; local servers reject it.
+              required:
+              - files
+              title: CreateJobRequest
+              type: object
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+            description: Raw file bytes; `filename` is required as a query parameter.
+      x-code-samples:
+      - lang: python
+        label: Python
+        source: "import requests\n\nurl = \"SERVER_URL/v1/file_parse?response_format=json&wait_timeout=300&tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content\"\
+          \nheaders = {\n    \"Authorization\": \"Bearer YOUR_TOKEN\",\n}\nfiles = {\"files\": (\"document.pdf\", open(\"\
+          document.pdf\", \"rb\"), \"application/pdf\")}\n\nresponse = requests.post(url, files=files, headers=headers)\n\n\
+          print(response.status_code)\nprint(response.json())"
+      - lang: javascript
+        label: JavaScript
+        source: "const url = \"SERVER_URL/v1/file_parse?response_format=json&wait_timeout=300&tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content\"\
+          ;\nconst form = new FormData();\nform.append(\"files\", fileInput.files[0], \"document.pdf\");\n\nconst response\
+          \ = await fetch(url, {\n  method: \"POST\",\n  headers: {\n    Authorization: \"Bearer YOUR_TOKEN\",\n  },\n  body:\
+          \ form,\n});\n\nconst data = await response.json();\nconsole.log(response.status, data);"
+      - lang: shell
+        label: cURL
+        source: "curl -X POST 'SERVER_URL/v1/file_parse?response_format=json&wait_timeout=300&tier=standard&ocr_mode=auto&page_range=1-5%2C8%2Cr3-r1&output_formats=markdown&output_formats=structured_content'\
+          \ \\\n  -H \"Authorization: Bearer YOUR_TOKEN\" \\\n  -F \"files=@document.pdf\""
+components:
+  schemas:
+    CallbackConfig:
+      properties:
+        url:
+          type: string
+          title: Url
+          description: HTTP(S) URL the server posts the finished job to.
+        secret:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Secret
+          description: Shared secret used to sign the callback.
+      additionalProperties: false
+      type: object
+      required:
+      - url
+      title: CallbackConfig
+      description: Where to deliver a webhook when the job reaches a terminal state.
+    CompleteUploadRequest:
+      properties:
+        sha256sum:
+          anyOf:
+          - type: string
+            pattern: ^[a-f0-9]{64}$
+          - type: 'null'
+          title: Sha256Sum
+          description: Lowercase hex SHA-256 of the uploaded bytes; a mismatch rejects the upload.
+      additionalProperties: false
+      type: object
+      title: CompleteUploadRequest
+      description: Finish an upload session, optionally asserting the content hash.
+    CreateJobRequest:
+      properties:
+        files:
+          items:
+            $ref: '#/components/schemas/JobFileEntry'
+          type: array
+          maxItems: 100
+          minItems: 1
+          title: Files
+          description: Documents to parse, in order.
+        tier:
+          anyOf:
+          - type: string
+            enum:
+            - flash
+            - basic
+            - standard
+            - advanced
+          - type: 'null'
+          title: Tier
+          description: 'Quality tier: flash, basic, standard or advanced. Omit to use the server''s default.'
+          examples:
+          - standard
+        ocr_mode:
+          type: string
+          enum:
+          - auto
+          - txt
+          - ocr
+          title: Ocr Mode
+          description: 'OCR mode for this parse job: auto-detect, native text, or forced OCR.'
+          default: auto
+          examples:
+          - auto
+        output_formats:
+          items:
+            type: string
+          type: array
+          title: Output Formats
+          description: 'Artifacts to produce: markdown, middle_json, structured_content, zip.'
+          default:
+          - markdown
+          examples:
+          - - markdown
+            - middle_json
+        callback:
+          anyOf:
+          - $ref: '#/components/schemas/CallbackConfig'
+          - type: 'null'
+          description: Webhook to call when the job finishes; local servers reject it.
+      additionalProperties: false
+      type: object
+      required:
+      - files
+      title: CreateJobRequest
+      description: Submit documents for parsing.
+    CreateUploadRequest:
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          title: Filename
+          description: File name, used for the created File object.
+        bytes:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Bytes
+          description: Exact size of the content that will be uploaded.
+        mime_type:
+          type: string
+          minLength: 1
+          title: Mime Type
+          description: Content type of the file, e.g. application/pdf.
+        purpose:
+          type: string
+          enum:
+          - parse
+          - input_image
+          title: Purpose
+          description: 'What the file is for: parsing a document, or an image input.'
+          default: parse
+        sha256sum:
+          anyOf:
+          - type: string
+            pattern: ^[a-f0-9]{64}$
+          - type: 'null'
+          title: Sha256Sum
+          description: Lowercase hex SHA-256 of the content; lets the server reuse an identical upload.
+        expires_after:
+          anyOf:
+          - $ref: '#/components/schemas/ExpiresAfter'
+          - type: 'null'
+          description: Retention for the upload; server default applies when omitted.
+      additionalProperties: false
+      type: object
+      required:
+      - filename
+      - bytes
+      - mime_type
+      title: CreateUploadRequest
+      description: Open an upload session before sending the bytes.
+    ErrorDetail:
+      properties:
+        type:
+          type: string
+          title: Type
+          description: Error class, e.g. invalid_request_error, permission_error, engine_error.
+        code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Code
+          description: Stable machine-readable code, e.g. file_not_found.
+        message:
+          type: string
+          title: Message
+          description: Human-readable description of what went wrong.
+        param:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Param
+          description: Request field the error refers to, when there is one.
+      additionalProperties: false
+      type: object
+      required:
+      - type
+      - message
+      title: ErrorDetail
+      description: One structured error, shared by every V1 endpoint.
+    ErrorResponse:
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+          description: The error that occurred.
+      additionalProperties: false
+      type: object
+      required:
+      - error
+      title: ErrorResponse
+      description: The envelope every error response uses.
+    ExpiresAfter:
+      properties:
+        anchor:
+          type: string
+          const: created_at
+          title: Anchor
+          description: Timestamp the expiry counts from.
+          default: created_at
+        seconds:
+          type: integer
+          maximum: 2592000.0
+          minimum: 3600.0
+          title: Seconds
+          description: Lifetime in seconds (1 hour to 30 days).
+          default: 3600
+      additionalProperties: false
+      type: object
+      title: ExpiresAfter
+      description: When the created resource should expire.
+    FileDeletionResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: File ID that was deleted.
+        object:
+          type: string
+          const: file
+          title: Object
+          description: Object type; always "file".
+          default: file
+        deleted:
+          type: boolean
+          title: Deleted
+          description: Always true on a successful delete.
+          default: true
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      title: FileDeletionResponse
+      description: Confirmation that a file was deleted.
+    FileIdSource:
+      properties:
+        type:
+          type: string
+          const: file_id
+          title: Type
+          description: Selects the file_id source variant.
+          default: file_id
+        file_id:
+          type: string
+          title: File Id
+          description: ID of a completed upload's File object.
+      additionalProperties: false
+      type: object
+      required:
+      - file_id
+      title: FileIdSource
+      description: Reference bytes that were uploaded earlier.
+    FileListResponse:
+      properties:
+        object:
+          type: string
+          const: list
+          title: Object
+          description: Object type; always "list".
+          default: list
+        data:
+          items:
+            $ref: '#/components/schemas/FileObjectModel'
+          type: array
+          title: Data
+          description: Files on this page.
+        first_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: First Id
+          description: ID of the first item on this page.
+        last_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Id
+          description: ID of the last item; pass it as `after` for the next page.
+        has_more:
+          type: boolean
+          title: Has More
+          description: Whether another page is available.
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - data
+      title: FileListResponse
+      description: One page of files.
+    FileObjectModel:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: File ID, used when submitting a job or downloading content.
+        object:
+          type: string
+          const: file
+          title: Object
+          description: Object type; always "file".
+          default: file
+        bytes:
+          type: integer
+          title: Bytes
+          description: Size of the stored content.
+        created_at:
+          type: integer
+          title: Created At
+          description: Unix timestamp when the file was created.
+        expires_at:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Expires At
+          description: Unix timestamp after which the file is gone; null keeps it.
+        filename:
+          type: string
+          title: Filename
+          description: File name.
+        purpose:
+          type: string
+          enum:
+          - parse
+          - parse_output
+          - input_image
+          title: Purpose
+          description: 'What the file is for: parse source, parse output, or image input.'
+        sha256sum:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sha256Sum
+          description: Content hash, when the server recorded one.
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - bytes
+      - created_at
+      - filename
+      - purpose
+      title: FileObjectModel
+      description: A file resource (source or parse output).
+    FileParseInfo:
+      properties:
+        model_used:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Used
+          description: Model that parsed the file, when one is recorded.
+        duration_ms:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Duration Ms
+          description: Parsing time in milliseconds.
+        parser_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Parser Version
+          description: Engine version that parsed the file.
+      additionalProperties: false
+      type: object
+      title: FileParseInfo
+      description: How one file was parsed.
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HealthFeatures:
+      properties:
+        webhook:
+          type: boolean
+          title: Webhook
+          description: Whether webhook callbacks are accepted.
+          default: false
+        output_formats:
+          items:
+            type: string
+            enum:
+            - markdown
+            - middle_json
+            - structured_content
+            - html
+            - latex
+            - docx
+            - zip
+          type: array
+          title: Output Formats
+          description: Output formats this server produces for a parse job.
+        sources:
+          items:
+            type: string
+            enum:
+            - file_id
+            - url
+            - inline
+            - local
+          type: array
+          title: Sources
+          description: Source types accepted by this server.
+      additionalProperties: false
+      type: object
+      title: HealthFeatures
+      description: What this server instance can do, so a client can plan before submitting.
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: Always "ok" when the server is ready to parse.
+          default: ok
+        version:
+          type: string
+          title: Version
+          description: Engine version serving this request.
+        features:
+          $ref: '#/components/schemas/HealthFeatures'
+          description: Capabilities of this instance.
+      additionalProperties: false
+      type: object
+      required:
+      - version
+      title: HealthResponse
+      description: Liveness and capability report.
+    InlineSource:
+      properties:
+        type:
+          type: string
+          const: inline
+          title: Type
+          description: Selects the inline source variant.
+          default: inline
+        name:
+          type: string
+          minLength: 1
+          title: Name
+          description: File name for the inline content; the suffix selects the parser.
+        data:
+          type: string
+          minLength: 1
+          title: Data
+          description: Base64-encoded file content.
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - data
+      title: InlineSource
+      description: Carry the document in the request body as base64.
+    JobAsyncResponse:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+          description: Job ID, used to poll, cancel and fetch results.
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - partial
+          - failed
+          - canceled
+          title: Status
+          description: 'Job state: queued, running, completed, partial, failed or canceled.'
+        created_at:
+          type: string
+          title: Created At
+          description: ISO-8601 UTC timestamp when the job was submitted.
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+          description: ISO-8601 UTC timestamp when parsing began.
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+          description: ISO-8601 UTC timestamp when the job reached a terminal state.
+        tier:
+          type: string
+          enum:
+          - flash
+          - basic
+          - standard
+          - advanced
+          title: Tier
+          description: Tier the job actually ran at.
+        output_formats:
+          items:
+            type: string
+            enum:
+            - markdown
+            - middle_json
+            - structured_content
+            - html
+            - latex
+            - docx
+            - zip
+          type: array
+          title: Output Formats
+          description: Artifacts the job was asked to produce.
+        access_level:
+          type: string
+          enum:
+          - anonymous
+          - registered
+          title: Access Level
+          description: Whether the caller was authenticated when the job was submitted.
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/JobProgress'
+          - type: 'null'
+          description: Per-file progress counters.
+        files:
+          items:
+            $ref: '#/components/schemas/JobFileResult'
+          type: array
+          title: Files
+          description: One entry per submitted document, in request order.
+        links:
+          $ref: '#/components/schemas/JobLinks'
+          description: URLs for this job's own resources.
+      additionalProperties: false
+      type: object
+      required:
+      - job_id
+      - status
+      - created_at
+      - tier
+      - output_formats
+      - access_level
+      - files
+      - links
+      title: JobAsyncResponse
+      description: A parse job and its per-file results.
+    JobCancelResponse:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+          description: Job ID that was canceled.
+        status:
+          type: string
+          const: canceled
+          title: Status
+          description: Always "canceled".
+          default: canceled
+        canceled_at:
+          type: string
+          title: Canceled At
+          description: ISO-8601 UTC timestamp of the cancellation.
+      additionalProperties: false
+      type: object
+      required:
+      - job_id
+      - canceled_at
+      title: JobCancelResponse
+      description: Confirmation that a job was canceled.
+    JobFileEntry:
+      properties:
+        source:
+          oneOf:
+          - $ref: '#/components/schemas/FileIdSource'
+          - $ref: '#/components/schemas/UrlSource'
+          - $ref: '#/components/schemas/InlineSource'
+          - $ref: '#/components/schemas/LocalSource'
+          title: Source
+          description: Where the document comes from; `type` selects the source variant.
+          discriminator:
+            propertyName: type
+            mapping:
+              file_id: '#/components/schemas/FileIdSource'
+              inline: '#/components/schemas/InlineSource'
+              local: '#/components/schemas/LocalSource'
+              url: '#/components/schemas/UrlSource'
+        page_range:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Page Range
+          description: 'PDF page selection: 1-based inclusive ranges, e.g. ''1-5,8,r3-r1''; ''r1'' is the last page and ''all''
+            selects every page. Blank means unspecified. Selections are sorted and deduplicated; out-of-bounds pages are omitted.
+            Reversed ranges, ''~'' and negative page numbers are invalid.'
+          examples:
+          - 1-5,8,r3-r1
+          - all
+      additionalProperties: false
+      type: object
+      required:
+      - source
+      title: JobFileEntry
+      description: One document to parse, with an optional page selection.
+    JobFileResult:
+      properties:
+        file_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: File Id
+          description: File ID of the stored source, when there is one.
+        name:
+          type: string
+          title: Name
+          description: Source file name.
+        page_range:
+          type: string
+          title: Page Range
+          description: Pages that were parsed, as a normalized range string.
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - failed
+          title: Status
+          description: 'Per-file state: queued, running, completed or failed.'
+        parse:
+          anyOf:
+          - $ref: '#/components/schemas/FileParseInfo'
+          - type: 'null'
+          description: Parsing details, once finished.
+        output_files:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFiles'
+          - type: 'null'
+          description: Artifacts produced for this file.
+        error:
+          anyOf:
+          - $ref: '#/components/schemas/ErrorDetail'
+          - type: 'null'
+          description: Why this file failed, when it did.
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - page_range
+      - status
+      title: JobFileResult
+      description: One file's status inside a job.
+    JobLinks:
+      properties:
+        self:
+          type: string
+          title: Self
+          description: URL to poll the job's status.
+        cancel:
+          type: string
+          title: Cancel
+          description: URL to cancel the job.
+      additionalProperties: false
+      type: object
+      required:
+      - self
+      - cancel
+      title: JobLinks
+      description: URLs for the job's own resources.
+    JobListItem:
+      properties:
+        job_id:
+          type: string
+          title: Job Id
+          description: Job ID.
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - partial
+          - failed
+          - canceled
+          title: Status
+          description: Job state.
+        created_at:
+          type: string
+          title: Created At
+          description: ISO-8601 UTC timestamp when the job was submitted.
+        file_count:
+          type: integer
+          title: File Count
+          description: Number of documents in the job.
+      additionalProperties: false
+      type: object
+      required:
+      - job_id
+      - status
+      - created_at
+      - file_count
+      title: JobListItem
+      description: One job in a listing.
+    JobListResponse:
+      properties:
+        object:
+          type: string
+          const: list
+          title: Object
+          description: Object type; always "list".
+          default: list
+        data:
+          items:
+            $ref: '#/components/schemas/JobListItem'
+          type: array
+          title: Data
+          description: Jobs on this page.
+        first_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: First Id
+          description: ID of the first job on this page.
+        last_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Id
+          description: ID of the last job; pass it as `after` for the next page.
+        has_more:
+          type: boolean
+          title: Has More
+          description: Whether another page is available.
+          default: false
+      additionalProperties: false
+      type: object
+      required:
+      - data
+      title: JobListResponse
+      description: One page of jobs.
+    JobProgress:
+      properties:
+        completed:
+          type: integer
+          title: Completed
+          description: Files finished successfully.
+          default: 0
+        failed:
+          type: integer
+          title: Failed
+          description: Files that failed.
+          default: 0
+        total:
+          type: integer
+          title: Total
+          description: Files in the job.
+          default: 0
+      additionalProperties: false
+      type: object
+      title: JobProgress
+      description: Per-file progress counters.
+    LocalSource:
+      properties:
+        type:
+          type: string
+          const: local
+          title: Type
+          description: Selects the local source variant.
+          default: local
+        path:
+          type: string
+          minLength: 1
+          title: Path
+          description: Path on the server; only accepted when local sources are enabled.
+      additionalProperties: false
+      type: object
+      required:
+      - path
+      title: LocalSource
+      description: Read a path on the server's own filesystem.
+    ModelInfo:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: Model ID to pass when a request names a model.
+        object:
+          type: string
+          const: model
+          title: Object
+          description: Object type; always "model".
+          default: model
+        created:
+          type: integer
+          title: Created
+          description: Unix timestamp when this server registered the model.
+        owned_by:
+          type: string
+          title: Owned By
+          description: Owner of the model.
+          default: mineru
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          description: What the model is and how quality is selected.
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - created
+      title: ModelInfo
+      description: One advertised model.
+    ModelListResponse:
+      properties:
+        object:
+          type: string
+          const: list
+          title: Object
+          description: Object type; always "list".
+          default: list
+        data:
+          items:
+            $ref: '#/components/schemas/ModelInfo'
+          type: array
+          title: Data
+          description: Advertised models.
+      additionalProperties: false
+      type: object
+      required:
+      - data
+      title: ModelListResponse
+      description: The models this server advertises.
+    OutputFileRef:
+      properties:
+        file_id:
+          type: string
+          title: File Id
+          description: File ID; download it from /v1/files/{file_id}/content.
+        bytes:
+          type: integer
+          title: Bytes
+          description: Size of the artifact.
+      additionalProperties: false
+      type: object
+      required:
+      - file_id
+      - bytes
+      title: OutputFileRef
+      description: A produced artifact, fetched through the Files API.
+    OutputFiles:
+      properties:
+        markdown:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: Markdown rendering of the document.
+        middle_json:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: Middle JSON parse result.
+        structured_content:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: Structured content tree.
+        html:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: HTML rendering, when the server produced it.
+        latex:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: LaTeX rendering, when the server produced it.
+        docx:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: DOCX rendering, when the server produced it.
+        zip:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFileRef'
+          - type: 'null'
+          description: Self-contained archive of every artifact.
+      additionalProperties: false
+      type: object
+      title: OutputFiles
+      description: Per-file output artifacts. Content is downloaded via the Files API.
+    TaskFileContent:
+      properties:
+        file_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: File Id
+          description: File ID of the stored source, when there is one.
+        name:
+          type: string
+          title: Name
+          description: Source file name.
+        page_range:
+          type: string
+          title: Page Range
+          description: Pages that were parsed, as a normalized range string.
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - failed
+          title: Status
+          description: 'Per-file state: queued, running, completed or failed.'
+        parse:
+          anyOf:
+          - $ref: '#/components/schemas/FileParseInfo'
+          - type: 'null'
+          description: Parsing details, once finished.
+        output_files:
+          anyOf:
+          - $ref: '#/components/schemas/OutputFiles'
+          - type: 'null'
+          description: Artifacts produced for this file.
+        error:
+          anyOf:
+          - $ref: '#/components/schemas/ErrorDetail'
+          - type: 'null'
+          description: Why this file failed, when it did.
+        content:
+          additionalProperties: true
+          type: object
+          title: Content
+          description: Inline artifacts keyed by format (markdown, middle_json, structured_content); empty until completed.
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - page_range
+      - status
+      title: TaskFileContent
+      description: Inline text artifacts, keeping the per-file status, error and resource refs.
+    TaskResultResponse:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+          description: Task ID, used to poll, cancel and fetch results.
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - partial
+          - failed
+          - canceled
+          title: Status
+          description: 'Job state: queued, running, completed, partial, failed or canceled.'
+        created_at:
+          type: string
+          title: Created At
+          description: ISO-8601 UTC timestamp when the job was submitted.
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+          description: ISO-8601 UTC timestamp when parsing began.
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+          description: ISO-8601 UTC timestamp when the job reached a terminal state.
+        tier:
+          type: string
+          enum:
+          - flash
+          - basic
+          - standard
+          - advanced
+          title: Tier
+          description: Tier the job actually ran at.
+        output_formats:
+          items:
+            type: string
+            enum:
+            - markdown
+            - middle_json
+            - structured_content
+            - html
+            - latex
+            - docx
+            - zip
+          type: array
+          title: Output Formats
+          description: Artifacts the job was asked to produce.
+        access_level:
+          type: string
+          enum:
+          - anonymous
+          - registered
+          title: Access Level
+          description: Whether the caller was authenticated when the job was submitted.
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/JobProgress'
+          - type: 'null'
+          description: Per-file progress counters.
+        files:
+          items:
+            $ref: '#/components/schemas/TaskFileContent'
+          type: array
+          title: Files
+          description: One entry per submitted document, with inline content.
+        links:
+          $ref: '#/components/schemas/JobLinks'
+          description: URLs for this job's own resources.
+        status_url:
+          type: string
+          title: Status Url
+          description: URL to poll this task's status.
+        result_url:
+          type: string
+          title: Result Url
+          description: URL to fetch the task's result; pass response_format to choose the shape.
+      additionalProperties: false
+      type: object
+      required:
+      - task_id
+      - status
+      - created_at
+      - tier
+      - output_formats
+      - access_level
+      - files
+      - links
+      - status_url
+      - result_url
+      title: TaskResultResponse
+      description: A parse result that can be consumed directly.
+    TaskStatusResponse:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+          description: Task ID, used to poll, cancel and fetch results.
+        status:
+          type: string
+          enum:
+          - queued
+          - running
+          - completed
+          - partial
+          - failed
+          - canceled
+          title: Status
+          description: 'Job state: queued, running, completed, partial, failed or canceled.'
+        created_at:
+          type: string
+          title: Created At
+          description: ISO-8601 UTC timestamp when the job was submitted.
+        started_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Started At
+          description: ISO-8601 UTC timestamp when parsing began.
+        finished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Finished At
+          description: ISO-8601 UTC timestamp when the job reached a terminal state.
+        tier:
+          type: string
+          enum:
+          - flash
+          - basic
+          - standard
+          - advanced
+          title: Tier
+          description: Tier the job actually ran at.
+        output_formats:
+          items:
+            type: string
+            enum:
+            - markdown
+            - middle_json
+            - structured_content
+            - html
+            - latex
+            - docx
+            - zip
+          type: array
+          title: Output Formats
+          description: Artifacts the job was asked to produce.
+        access_level:
+          type: string
+          enum:
+          - anonymous
+          - registered
+          title: Access Level
+          description: Whether the caller was authenticated when the job was submitted.
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/JobProgress'
+          - type: 'null'
+          description: Per-file progress counters.
+        files:
+          items:
+            $ref: '#/components/schemas/JobFileResult'
+          type: array
+          title: Files
+          description: One entry per submitted document, in request order.
+        links:
+          $ref: '#/components/schemas/JobLinks'
+          description: URLs for this job's own resources.
+        status_url:
+          type: string
+          title: Status Url
+          description: URL to poll this task's status.
+        result_url:
+          type: string
+          title: Result Url
+          description: URL to fetch the task's result; pass response_format to choose the shape.
+      additionalProperties: false
+      type: object
+      required:
+      - task_id
+      - status
+      - created_at
+      - tier
+      - output_formats
+      - access_level
+      - files
+      - links
+      - status_url
+      - result_url
+      title: TaskStatusResponse
+      description: Reuse the job fields, serialized as task_id with the V1 query URLs.
+    TierInfo:
+      properties:
+        id:
+          type: string
+          enum:
+          - flash
+          - basic
+          - standard
+          - advanced
+          title: Id
+          description: Tier to pass as `tier` when submitting a parse job.
+        description:
+          type: string
+          title: Description
+          description: Quality and cost trade-off this tier represents.
+        current_model:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Current Model
+          description: Model serving this tier, when one is bound.
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - description
+      title: TierInfo
+      description: One parsing tier and the model that currently backs it.
+    TierListResponse:
+      properties:
+        object:
+          type: string
+          const: list
+          title: Object
+          description: Object type; always "list".
+          default: list
+        data:
+          items:
+            $ref: '#/components/schemas/TierInfo'
+          type: array
+          title: Data
+          description: Advertised tiers.
+      additionalProperties: false
+      type: object
+      required:
+      - data
+      title: TierListResponse
+      description: The tiers this server can serve.
+    UploadResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+          description: Upload ID, used by the content and completion endpoints.
+        object:
+          type: string
+          const: upload
+          title: Object
+          description: Object type; always "upload".
+          default: upload
+        bytes:
+          type: integer
+          title: Bytes
+          description: Declared size of the content.
+        created_at:
+          type: integer
+          title: Created At
+          description: Unix timestamp when the session was created.
+        expires_at:
+          type: integer
+          title: Expires At
+          description: Unix timestamp after which the session is unusable.
+        filename:
+          type: string
+          title: Filename
+          description: File name the upload will create.
+        purpose:
+          type: string
+          enum:
+          - parse
+          - parse_output
+          - input_image
+          title: Purpose
+          description: What the file is for.
+          default: parse
+        mime_type:
+          type: string
+          title: Mime Type
+          description: Content type of the file.
+        sha256sum:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sha256Sum
+          description: Content hash, once known.
+        status:
+          type: string
+          enum:
+          - pending
+          - completed
+          - cancelled
+          - expired
+          title: Status
+          description: 'Upload lifecycle state: pending, completed, cancelled or expired.'
+        upload_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Upload Url
+          description: Where to PUT the bytes, while the upload is pending.
+        upload_method:
+          anyOf:
+          - type: string
+            const: PUT
+          - type: 'null'
+          title: Upload Method
+          description: HTTP method for `upload_url`.
+        upload_headers:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Upload Headers
+          description: Headers to send with the content PUT.
+        file:
+          anyOf:
+          - $ref: '#/components/schemas/FileObjectModel'
+          - type: 'null'
+          description: The created File object, once completed.
+      additionalProperties: false
+      type: object
+      required:
+      - id
+      - bytes
+      - created_at
+      - expires_at
+      - filename
+      - mime_type
+      - status
+      title: UploadResponse
+      description: An upload session, and the File object once it is complete.
+    UrlSource:
+      properties:
+        type:
+          type: string
+          const: url
+          title: Type
+          description: Selects the url source variant.
+          default: url
+        url:
+          type: string
+          title: Url
+          description: HTTP(S) URL the server downloads before parsing.
+      additionalProperties: false
+      type: object
+      required:
+      - url
+      title: UrlSource
+      description: Let the server fetch the document itself.
+    UsageBillingPeriod:
+      properties:
+        start:
+          type: string
+          title: Start
+          description: ISO-8601 UTC start of the current billing period.
+        end:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: End
+          description: ISO-8601 UTC end of the period; null while it is open.
+      additionalProperties: false
+      type: object
+      required:
+      - start
+      title: UsageBillingPeriod
+      description: Window the usage counters cover.
+    UsageCurrent:
+      properties:
+        pages_processed:
+          type: integer
+          title: Pages Processed
+          description: Pages parsed in this period.
+          default: 0
+        files_processed:
+          type: integer
+          title: Files Processed
+          description: Files parsed in this period.
+          default: 0
+        jobs_created:
+          type: integer
+          title: Jobs Created
+          description: Jobs submitted in this period.
+          default: 0
+      additionalProperties: false
+      type: object
+      title: UsageCurrent
+      description: What this server has processed in the current period.
+    UsageLimits:
+      properties:
+        max_pages_per_file:
+          type: integer
+          title: Max Pages Per File
+          description: Page cap for a single document.
+          default: 1000
+        max_file_size_bytes:
+          type: integer
+          title: Max File Size Bytes
+          description: Size cap for one uploaded file.
+          default: 209715200
+        max_files_per_job:
+          type: integer
+          title: Max Files Per Job
+          description: Document cap for one job.
+          default: 100
+        max_concurrent_jobs:
+          type: integer
+          title: Max Concurrent Jobs
+          description: Jobs this server runs at the same time.
+          default: 1
+        max_file_retention_days:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Max File Retention Days
+          description: Days artifacts are kept; null means unlimited.
+      additionalProperties: false
+      type: object
+      title: UsageLimits
+      description: What this server accepts per request.
+    UsageResponse:
+      properties:
+        object:
+          type: string
+          const: usage
+          title: Object
+          description: Object type; always "usage".
+          default: usage
+        access_level:
+          type: string
+          enum:
+          - anonymous
+          - registered
+          title: Access Level
+          description: Whether this caller is authenticated.
+        billing_period:
+          $ref: '#/components/schemas/UsageBillingPeriod'
+          description: Window the counters cover.
+        current:
+          $ref: '#/components/schemas/UsageCurrent'
+          description: Counters for the current period.
+        limits:
+          $ref: '#/components/schemas/UsageLimits'
+          description: Limits applied to new requests.
+      additionalProperties: false
+      type: object
+      required:
+      - access_level
+      - billing_period
+      - current
+      - limits
+      title: UsageResponse
+      description: Current usage and the limits it is measured against.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      description: Bearer API key when configured
+      scheme: bearer
+tags:
+- name: Tasks
+  description: One-request parsing, asynchronous tasks and inline or ZIP results.
+- name: Health
+  description: Liveness and server readiness.
+- name: Tiers
+  description: Parsing tiers and runtime capability advertised by this server.
+- name: Models
+  description: VLM models available for parsing.
+- name: Uploads
+  description: Create and manage upload sessions for source documents.
+- name: Files
+  description: Inspect uploaded files and fetch parsed content.
+- name: Jobs
+  description: Submit parse jobs and poll for results.
+- name: Usage
+  description: Remote service quota and usage reporting.
+servers:
+- url: SERVER_URL
+  description: API Server
