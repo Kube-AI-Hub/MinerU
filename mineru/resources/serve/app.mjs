@@ -248,12 +248,17 @@ window.MinerUSourceViewer = SourceViewer;
       startOut.textContent = String(a);
       endOut.textContent = String(b);
       var selected = b - a + 1;
-      document.getElementById('page-summary').textContent = t('pageSelected', {
-        from: a,
-        to: b,
-        count: selected,
-        total: total
-      });
+      /* Selecting the whole document is the default, so say that plainly
+         instead of repeating the page count twice. */
+      document.getElementById('page-summary').textContent =
+        a === 1 && b === total
+          ? t('pageAll', { total: total })
+          : t('pageSelected', {
+              from: a,
+              to: b,
+              count: selected,
+              total: total
+            });
     }
 
     start.addEventListener('input', function () {
@@ -282,12 +287,11 @@ window.MinerUSourceViewer = SourceViewer;
     end.value = String(count);
     start.disabled = false;
     end.disabled = false;
-    document.getElementById('page-summary').textContent = t('pageSelected', {
-      from: 1,
-      to: count,
-      count: count,
-      total: count
-    });
+    /* Assigning `.value` does not fire `input`, and the page labels plus the
+       summary are only written from that handler — without this they kept
+       showing the previous document's page count while the sliders had already
+       moved. Reuse the handler so its clamping applies here too. */
+    start.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   function pageRangeValue() {
@@ -749,6 +753,25 @@ window.MinerUSourceViewer = SourceViewer;
   }
   /* --------------------------------------------------------------- parsing */
 
+  /* Bumped on every example switch so a response that lands after the user
+     picked another example cannot render the wrong document. */
+  var demoRequestToken = 0;
+
+  /* The download of a bundled example can take seconds on a slow link, and
+     while it runs the previous document would otherwise stay on screen with
+     nothing indicating work is happening. Show the same placeholder the viewer
+     uses once it has the bytes, so the two states look identical. */
+  function showSourceLoading(name) {
+    var host = document.getElementById('source-body');
+    host.innerHTML = '';
+    host.classList.remove('source-viewer');
+    var status = document.createElement('div');
+    status.className = 'source-status';
+    status.textContent = t('pdfLoading');
+    host.appendChild(status);
+    document.getElementById('source-meta').textContent = name;
+  }
+
   function demoButton(name) {
     var chip = document.createElement('button');
     chip.type = 'button';
@@ -759,21 +782,27 @@ window.MinerUSourceViewer = SourceViewer;
         other.classList.toggle('selected', other === chip);
       });
       state.demo = name;
+      state.filename = name;
       document.getElementById('file').value = '';
       setStatus('');
+      /* Reset and show the loading state before the request, not after it
+         resolves: the old document used to sit there for the whole download,
+         which reads as "the click did nothing". */
+      resetViews();
+      showSourceLoading(name);
+
+      var token = ++demoRequestToken;
       fetch('./demo/' + name, { headers: authHeaders() })
         .then(function (response) {
           if (!response.ok) throw new Error('cannot load the bundled example');
           return response.blob();
         })
         .then(function (blob) {
-          resetViews();
-          state.demo = name;
-          state.filename = name;
-          document.getElementById('source-meta').textContent = name;
+          if (token !== demoRequestToken) return;
           renderSourcePreview(blob, name);
         })
         .catch(function (error) {
+          if (token !== demoRequestToken) return;
           setStatus(t('failed', { message: error.message }), 'error');
         });
     });

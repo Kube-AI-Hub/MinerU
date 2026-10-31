@@ -972,6 +972,61 @@ class TestResponseParsing:
         assert "source-page-total" in viewer
         assert "goToPage" in viewer
 
+    def test_switching_examples_resets_before_it_downloads(self, script):
+        """The old document must not stay on screen while the next one loads.
+
+        Reset and the loading placeholder used to run inside the fetch handler,
+        so on a slow link the previous document stayed visible for the whole
+        download with nothing indicating work was happening — the click looked
+        ignored.
+        """
+        click = script[script.index("chip.addEventListener('click'"):]
+        click = click[: click.index("return chip;")]
+        fetch_at = click.index("fetch('./demo/' + name")
+        assert click.index("resetViews()") < fetch_at
+        assert click.index("showSourceLoading(") < fetch_at
+
+    def test_switching_examples_drops_a_stale_response(self, script):
+        """Two quick clicks must render the second example, not whichever lands last."""
+        click = script[script.index("chip.addEventListener('click'"):]
+        click = click[: click.index("return chip;")]
+        assert "demoRequestToken" in click
+        # Both the success and the failure path bail out once superseded.
+        assert click.count("token !== demoRequestToken") >= 2
+
+    def test_loading_placeholder_matches_the_viewer(self, script):
+        """The pre-download placeholder and the viewer's own must look the same."""
+        loading = script[script.index("function showSourceLoading"):]
+        loading = loading[: loading.index("\n  }\n")]
+        assert "source-status" in loading
+        assert "pdfLoading" in loading
+
+    def test_page_labels_follow_a_new_document(self, script):
+        """Assigning .value does not fire input, so the labels kept old counts.
+
+        The sliders moved to the new page count while the number under them still
+        read the previous document's last page. Pin the event dispatch after the
+        assignments rather than the absence of a duplicate summary: the labels
+        are only written from the input handler.
+        """
+        body = script[script.index("function setPageCount"):]
+        body = body[: body.index("\n  }\n")]
+        assert body.index("end.value = String(count)") < body.index(
+            "dispatchEvent(new Event('input'"
+        )
+
+    def test_page_summary_shortens_the_default_selection(self, script):
+        """Selecting everything is the default; repeating the count twice is noise."""
+        sync = script[script.index("function sync(changed)"):]
+        sync = sync[: sync.index("\n    }")]
+        assert "pageAll" in sync
+        assert "pageSelected" in sync
+
+    def test_page_all_copy_exists_in_both_languages(self):
+        """A key present in one table only falls back to Chinese in English."""
+        source = (serve_app.ASSETS_DIR / "i18n.js").read_text(encoding="utf-8")
+        assert source.count("pageAll:") == 2
+
 
 def test_health_payload_is_json_serialisable(tmp_path, model_home):
     """The probe body must not depend on non-serialisable values."""
