@@ -17,7 +17,7 @@ FROM ${VLLM_IMAGE}
 
 # Which PyPI index to install from. Overridable because a build host may not
 # reach every mirror; the default matches the other China Dockerfiles here.
-ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
+ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 # libgl and libglib are needed by opencv, which MinerU uses for image handling.
 RUN apt-get update && \

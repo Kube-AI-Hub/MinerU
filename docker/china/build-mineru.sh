@@ -33,7 +33,7 @@ DOCKER_BUILDKIT=1 BUILDX_NO_DEFAULT_ATTESTATIONS=1 \
         --builder mineru-builder \
         --platform linux/amd64 \
         --build-arg "VLLM_IMAGE=${VLLM_IMAGE:-watering-ai-registry.cn-shanghai.cr.aliyuncs.com/kube-ai-hub/vllm/vllm-openai:v0.30.0}" \
-        --build-arg "PIP_INDEX_URL=${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple}" \
+        --build-arg "PIP_INDEX_URL=${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}" \
         -f docker/china/Dockerfile.mineru \
         -t "${IMAGE}" \
         --push \
