@@ -601,12 +601,17 @@ def _owned_span_texts(owner: Any, spans: list[_AnalyzeSpan], median_height: floa
     inputs = _owned_span_inputs(owner, spans, median_height)
     if inputs is None:
         return None
+    # private_ranges is a sequence of (start, end) pairs, not one flat pair:
+    # the Rust binding declares it as a list of tuples, so passing the bare
+    # (PRIVATE_USE_AREA_START, PRIVATE_USE_AREA_END) raises
+    # "argument 'private_ranges': 'int' object is not an instance of 'tuple'"
+    # and fails the whole page parse.
     return owner.prepare_span_texts(
         *inputs,
         list(CONTROL_LINE_BREAK_CHARS),
         _SPACING_DIACRITIC_TO_COMBINING,
         threshold,
-        (PRIVATE_USE_AREA_START, PRIVATE_USE_AREA_END),
+        ((PRIVATE_USE_AREA_START, PRIVATE_USE_AREA_END),),
         [span.metadata.get("_native_tight_spacing", True) for span in spans],
     )
 

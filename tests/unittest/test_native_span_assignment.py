@@ -186,3 +186,37 @@ def test_owned_unicode_content_matches_reference(text: str) -> None:
         results.append((asdict(span), bool(pending)))
     assert _native.text_snapshot_stats()[2] == before + 1
     assert results[0] == results[1]
+
+
+def test_owned_content_passes_private_use_ranges_as_pairs(owned_text: NativeTextSnapshot) -> None:
+    """PUA 区间必须按 (start, end) 列表下发；传扁平二元组会让整页解析抛 TypeError。
+
+    Rust 侧的 `private_ranges` 是 `Vec<(u32, u32)>`，只接受「区间列表」。早期实现传的是
+    `(PRIVATE_USE_AREA_START, PRIVATE_USE_AREA_END)`，绑定层逐个解包时把第一个 int 当成
+    区间元组，报 `argument 'private_ranges': 'int' object is not an instance of 'tuple'`，
+    整份文档解析失败——只有走原生快照路径的页面才会命中。
+    """
+    geometry = owned_text.materialize_geometry()
+    span = _AnalyzeSpan(ContentType.TEXT, (0.0, 0.0, 320.0, 100.0), metadata={"chars": [], "height": 100.0, "width": 320.0})
+    native.fill_char_in_spans(
+        [span],
+        geometry.chars,
+        12.0,
+        tight_bboxes=geometry.tight_bboxes,
+        origins=geometry.origins,
+        detect_scripts=False,
+        _native_text=owned_text,
+    )
+    assert span.content
+
+    # 直接以扁平二元组调用绑定层仍然报错，确认这条用例锁的是调用形状而非巧合。
+    with pytest.raises(TypeError, match="private_ranges"):
+        owned_text.prepare_span_texts(
+            [(0.0, 0.0, 320.0, 100.0)],
+            12.0,
+            list(native.CONTROL_LINE_BREAK_CHARS),
+            native._SPACING_DIACRITIC_TO_COMBINING,
+            native.SPACING_DIACRITIC_MIN_OVERLAP_RATIO,
+            (native.PRIVATE_USE_AREA_START, native.PRIVATE_USE_AREA_END),
+            [True],
+        )
